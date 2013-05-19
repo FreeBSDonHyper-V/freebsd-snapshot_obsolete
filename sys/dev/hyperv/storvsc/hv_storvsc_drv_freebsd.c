@@ -206,7 +206,6 @@ DRIVER_MODULE(storvsc, vmbus, storvsc_driver, storvsc_devclass, 0, 0);
 MODULE_VERSION(storvsc,1);
 MODULE_DEPEND(storvsc, vmbus, 1, 1, 1);
 
-extern int ata_disk_enable;
 
 /**
  * The host is capable of sending messages to us that are 
@@ -759,13 +758,13 @@ scan_for_luns(struct storvsc_softc *sc)
 static int
 storvsc_probe(device_t dev)
 {
+	int ata_disk_enable = 0;
 	int ret	= ENXIO;
 
 	switch (storvsc_get_storage_type(dev)) {
 	case DRIVER_BLKVSC:
-		if (ata_disk_enable == 0) {
-			ret = 0; 
-		}
+		if (!getenv_int("hw.ata.disk_enable", &ata_disk_enable))
+			ret = 0;
 		break;
 	case DRIVER_STORVSC:
 		ret = 0;
