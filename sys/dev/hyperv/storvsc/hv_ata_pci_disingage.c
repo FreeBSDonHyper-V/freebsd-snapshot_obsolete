@@ -70,7 +70,6 @@ hv_ata_pci_probe(device_t dev)
 {
 	int ata_disk_enable = 0;
 	struct ata_pci_controller *ctlr = device_get_softc(dev);
-	char buffer[64];
 
 	/* is this a storage class device ? */
 	if (pci_get_class(dev) != PCIC_STORAGE)
@@ -98,7 +97,7 @@ hv_ata_pci_probe(device_t dev)
 
 	}
 	if(bootverbose)
-		device_printf(dev, "Hyper-V ATA storage driver enabled by disabling emulated, ATA-PCI driver.\n");
+		device_printf(dev, "Hyper-V ATA storage driver enabled.\n");
 
 	return (0);
 }
