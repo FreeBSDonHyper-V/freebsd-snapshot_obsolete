@@ -69,7 +69,6 @@ static int
 hv_ata_pci_probe(device_t dev)
 {
 	int ata_disk_enable = 0;
-	struct ata_pci_controller *ctlr = device_get_softc(dev);
 
 	/* is this a storage class device ? */
 	if (pci_get_class(dev) != PCIC_STORAGE)
