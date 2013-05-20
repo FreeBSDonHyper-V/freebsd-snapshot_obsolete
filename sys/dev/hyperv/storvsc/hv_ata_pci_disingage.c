@@ -48,6 +48,10 @@ __FBSDID("$FreeBSD$");
 #include <dev/ata/ata-pci.h>
 #include <ata_if.h>
 
+#define HV_X64_MSR_GUEST_OS_ID 0x40000000
+#define HV_X64_CPUID_MIN 0x40000005
+#define HV_X64_CPUID_MAX 0x4000ffff
+
 
 /* prototypes */
 static int ata_pci_probe(device_t dev);
