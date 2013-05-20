@@ -60,7 +60,7 @@ static int hv_ata_pci_detach(device_t dev);
 static int hv_ata_pci_suspend(device_t dev);
 static int hv_ata_pci_resume(device_t dev);
 
-static int check_for_hyper_v(void);
+static int hv_check_for_hyper_v(void);
 
 /*
  * generic PCI ATA device probe
@@ -89,7 +89,7 @@ hv_ata_pci_probe(device_t dev)
 	 * ATA driver, the environment variable
 	 * hw_ata.disk_enable must be explicitly set to 1.
 	 */
-	if (check_for_hyper_v()) {
+	if (hv_check_for_hyper_v()) {
 		if (getenv_int("hw.ata.disk_enable", &ata_disk_enable)) {
 			if(bootverbose)
 				device_printf(dev, "hw.ata.disk_enable flag disables Hyper-V ATA storage driver\n");
@@ -132,7 +132,7 @@ hv_ata_pci_resume(device_t dev)
 * via enlighted storage driver
 */
 static int
-check_for_hyper_v(void)
+hv_check_for_hyper_v(void)
 {
 	u_int regs[4];
 	int hyper_v_detected = 0;
@@ -162,7 +162,7 @@ static device_method_t hv_ata_pci_methods[] = {
     DEVMETHOD_END
 };
 
-devclass_t ata_pci_devclass;
+devclass_t hv_ata_pci_devclass;
 
 static driver_t hv_ata_pci_disingage_driver = {
     "atapci",
