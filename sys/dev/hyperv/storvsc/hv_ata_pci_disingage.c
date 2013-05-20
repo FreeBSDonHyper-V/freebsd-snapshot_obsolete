@@ -54,11 +54,11 @@ __FBSDID("$FreeBSD$");
 
 
 /* prototypes */
-static int ata_pci_probe(device_t dev);
-static int ata_pci_attach(device_t dev);
-static int ata_pci_detach(device_t dev);
-static int ata_pci_suspend(device_t dev);
-static int ata_pci_resume(device_t dev);
+static int hv_ata_pci_probe(device_t dev);
+static int hv_ata_pci_attach(device_t dev);
+static int hv_ata_pci_detach(device_t dev);
+static int hv_ata_pci_suspend(device_t dev);
+static int hv_ata_pci_resume(device_t dev);
 
 static int check_for_hyper_v(void);
 
@@ -66,7 +66,7 @@ static int check_for_hyper_v(void);
  * generic PCI ATA device probe
  */
 static int
-ata_pci_probe(device_t dev)
+hv_ata_pci_probe(device_t dev)
 {
 	int ata_disk_enable = 0;
 	struct ata_pci_controller *ctlr = device_get_softc(dev);
@@ -104,25 +104,25 @@ ata_pci_probe(device_t dev)
 }
 
 static int
-ata_pci_attach(device_t dev)
+hv_ata_pci_attach(device_t dev)
 {
     return 0;
 }
 
 static int
-ata_pci_detach(device_t dev)
+hv_ata_pci_detach(device_t dev)
 {
 	return 0;
 }
 
 static int
-ata_pci_suspend(device_t dev)
+hv_ata_pci_suspend(device_t dev)
 {
 	return 0;
 }
 
 static int
-ata_pci_resume(device_t dev)
+hv_ata_pci_resume(device_t dev)
 {
 	return 0;
 }
@@ -150,13 +150,13 @@ check_for_hyper_v(void)
 	return (hyper_v_detected);
 }
 
-static device_method_t ata_pci_methods[] = {
+static device_method_t hv_ata_pci_methods[] = {
     /* device interface */
-    DEVMETHOD(device_probe,             ata_pci_probe),
-    DEVMETHOD(device_attach,            ata_pci_attach),
-    DEVMETHOD(device_detach,            ata_pci_detach),
-    DEVMETHOD(device_suspend,           ata_pci_suspend),
-    DEVMETHOD(device_resume,            ata_pci_resume),
+    DEVMETHOD(device_probe,             hv_ata_pci_probe),
+    DEVMETHOD(device_attach,            hv_ata_pci_attach),
+    DEVMETHOD(device_detach,            hv_ata_pci_detach),
+    DEVMETHOD(device_suspend,           hv_ata_pci_suspend),
+    DEVMETHOD(device_resume,            hv_ata_pci_resume),
     DEVMETHOD(device_shutdown,          bus_generic_shutdown),
 
     DEVMETHOD_END
@@ -164,12 +164,12 @@ static device_method_t ata_pci_methods[] = {
 
 devclass_t ata_pci_devclass;
 
-static driver_t ata_pci_disingage_driver = {
+static driver_t hv_ata_pci_disingage_driver = {
     "atapci",
-    ata_pci_methods,
+    hv_ata_pci_methods,
     sizeof(struct ata_pci_controller),
 };
 
-DRIVER_MODULE(atapci, pci, ata_pci_disingage_driver, ata_pci_devclass, NULL, NULL);
+DRIVER_MODULE(atapci, pci, hv_ata_pci_disingage_driver, hv_ata_pci_devclass, NULL, NULL);
 MODULE_VERSION(atapci, 1);
 MODULE_DEPEND(atapci, ata, 1, 1, 1);
