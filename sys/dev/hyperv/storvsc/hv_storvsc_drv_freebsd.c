@@ -763,6 +763,8 @@ storvsc_probe(device_t dev)
 
 	switch (storvsc_get_storage_type(dev)) {
 	case DRIVER_BLKVSC:
+		if(bootverbose)
+			device_printf(dev, "Emulated ATA/IDE probe\n");
 		if (!getenv_int("hw.ata.disk_enable", &ata_disk_enable)) {
 			if(bootverbose)
 				device_printf(dev,
