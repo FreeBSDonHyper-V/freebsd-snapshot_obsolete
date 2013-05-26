@@ -775,7 +775,7 @@ storvsc_probe(device_t dev)
 		break;
 	case DRIVER_STORVSC:
 		if(bootverbose)
-			device_printf(dev, "Enlightened SCSI device detected")
+			device_printf(dev, "Enlightened SCSI device detected\n")
 		ret = 0;
 		break;
 	default:
