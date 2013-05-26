@@ -760,21 +760,22 @@ storvsc_probe(device_t dev)
 {
 	int ata_disk_enable = 0;
 	int ret	= ENXIO;
-	device_printf(dev, "hyper-v storvc_probe\n");
 
 	switch (storvsc_get_storage_type(dev)) {
 	case DRIVER_BLKVSC:
 		if(bootverbose)
 			device_printf(dev, "DRIVER_BLKVSC-Emulated ATA/IDE probe\n");
 		if (!getenv_int("hw.ata.disk_enable", &ata_disk_enable)) {
-		//	if(bootverbose)
+			if(bootverbose)
 				device_printf(dev,
-					"Enlightened ATA/IDE used\n");
+					"Enlightened ATA/IDE detected\n");
 			ret = 0;
-		} else //if(bootverbose)
-			device_printf(dev, "Emulated ATA/IDE used\n");
+		} else if(bootverbose)
+			device_printf(dev, "Emulated ATA/IDE detected (hw.ata.disk_enable set)\n");
 		break;
 	case DRIVER_STORVSC:
+		if(bootverbose)
+			device_printf(dev, "Enlightened SCSI device detected")
 		ret = 0;
 		break;
 	default:
