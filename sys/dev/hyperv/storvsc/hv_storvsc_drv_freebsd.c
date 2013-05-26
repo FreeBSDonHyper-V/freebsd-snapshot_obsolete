@@ -194,7 +194,7 @@ static device_method_t storvsc_methods[] = {
 	DEVMETHOD(device_attach,	storvsc_attach),
 	DEVMETHOD(device_detach,	storvsc_detach),
 	DEVMETHOD(device_shutdown,      bus_generic_shutdown),
-	{ 0, 0 }
+	DEVMETHOD_END
 };
 
 static driver_t storvsc_driver = {
@@ -761,6 +761,7 @@ storvsc_probe(device_t dev)
 	int ata_disk_enable = 0;
 	int ret	= ENXIO;
 	device_printf(dev, "hyper-v storvc_probe");
+	printf("hyperv - test point");
 	switch (storvsc_get_storage_type(dev)) {
 	case DRIVER_BLKVSC:
 		if(bootverbose)
