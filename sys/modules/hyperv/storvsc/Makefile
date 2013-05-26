@@ -4,7 +4,7 @@
 
 KMOD=	 hv_storvsc
 
-SRCS =	hv_storvsc_drv_freebsd.c hv_ata_pci_disingage.c \
+SRCS =	hv_storvsc_drv_freebsd.c \
 	hv_vstorage.h
 
 CFLAGS+= -I${.CURDIR}/../../../dev/hyperv/include \
