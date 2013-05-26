@@ -203,7 +203,7 @@ static driver_t storvsc_driver = {
 
 static devclass_t storvsc_devclass;
 DRIVER_MODULE(storvsc, vmbus, storvsc_driver, storvsc_devclass, 0, 0);
-MODULE_VERSION(storvsc,1);
+MODULE_VERSION(storvsc, 1);
 MODULE_DEPEND(storvsc, vmbus, 1, 1, 1);
 
 
