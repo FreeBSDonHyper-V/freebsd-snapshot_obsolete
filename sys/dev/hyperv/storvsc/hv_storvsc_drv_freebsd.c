@@ -771,11 +771,11 @@ storvsc_probe(device_t dev)
 					"Enlightened ATA/IDE detected\n");
 			ret = 0;
 		} else if(bootverbose)
-			device_printf(dev, "Emulated ATA/IDE detected (hw.ata.disk_enable set)\n");
+			device_printf(dev, "Emulated ATA/IDE set (hw.ata.disk_enable set)\n");
 		break;
 	case DRIVER_STORVSC:
 		if(bootverbose)
-			device_printf(dev, "Enlightened SCSI device detected\n")
+			device_printf(dev, "Enlightened SCSI device detected\n");
 		ret = 0;
 		break;
 	default:
