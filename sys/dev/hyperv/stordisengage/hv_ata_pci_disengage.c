@@ -67,7 +67,7 @@ static int
 hv_ata_pci_probe(device_t dev)
 {
 	int ata_disk_enable = 0;
-
+device_printf(dev, "hv_ata_pci_probe dev_class/subslcass = %d, %d", pci_get_class(dev),pci_get_subclass(dev));
 	/* is this a storage class device ? */
 	if (pci_get_class(dev) != PCIC_STORAGE)
 		return (ENXIO);
@@ -154,5 +154,5 @@ static driver_t hv_ata_pci_disengage_driver = {
 
 DRIVER_MODULE(atapci_dis, pci, hv_ata_pci_disengage_driver, hv_ata_pci_devclass, NULL, NULL);
 MODULE_VERSION(atapci_dis, 1);
-MODULE_DEPEND(atapci_dis, ata, 1, 1, 1);
+//MODULE_DEPEND(atapci_dis, ata, 1, 1, 1);
 
