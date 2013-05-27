@@ -147,10 +147,12 @@ static device_method_t hv_ata_pci_methods[] = {
 devclass_t hv_ata_pci_devclass;
 
 static driver_t hv_ata_pci_disengage_driver = {
-    "ata",
+    "atapci_dis",
     hv_ata_pci_methods,
-    sizeof(struct ata_channel),
+    sizeof(struct ata_pci_controller),
 };
 
-DRIVER_MODULE(ata, atapci, hv_ata_pci_disengage_driver, hv_ata_pci_devclass, NULL, NULL);
+DRIVER_MODULE(atapci_dis, pci, hv_ata_pci_disengage_driver, hv_ata_pci_devclass, NULL, NULL);
+MODULE_VERSION(atapci_dis, 1);
+MODULE_DEPEND(atapci_dis, ata, 1, 1, 1);
 
