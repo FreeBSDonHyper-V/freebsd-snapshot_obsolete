@@ -69,12 +69,12 @@ hv_ata_pci_probe(device_t dev)
 	int ata_disk_enable = 0;
 device_printf(dev, "hv_ata_pci_probe dev_class/subslcass = %d, %d", pci_get_class(dev),pci_get_subclass(dev));
 	/* is this a storage class device ? */
-	if (pci_get_class(dev) != PCIC_STORAGE)
-		return (ENXIO);
-
-	/* is this an IDE/ATA type device ? */
-	if (pci_get_subclass(dev) != PCIS_STORAGE_IDE)
-		return (ENXIO);
+//	if (pci_get_class(dev) != PCIC_STORAGE)
+//		return (ENXIO);
+//
+//	/* is this an IDE/ATA type device ? */
+//	if (pci_get_subclass(dev) != PCIS_STORAGE_IDE)
+//		return (ENXIO);
 
 	if(bootverbose)
 		device_printf(dev, "Hyper-V probe for disabling ATA-PCI, emulated driver\n");
@@ -96,7 +96,7 @@ device_printf(dev, "hv_ata_pci_probe dev_class/subslcass = %d, %d", pci_get_clas
 	if(bootverbose)
 		device_printf(dev, "Hyper-V ATA storage driver enabled.\n");
 
-	return (0);
+	return (ENXIO);
 }
 
 static int
@@ -147,12 +147,18 @@ static device_method_t hv_ata_pci_methods[] = {
 devclass_t hv_ata_pci_devclass;
 
 static driver_t hv_ata_pci_disengage_driver = {
-    "atapci_dis",
+    "pci disengage",
     hv_ata_pci_methods,
     sizeof(struct ata_pci_controller),
 };
 
-DRIVER_MODULE(atapci_dis, pci, hv_ata_pci_disengage_driver, hv_ata_pci_devclass, NULL, NULL);
+//DEFINE_CLASS_0(pci, pci_driver, pci_methods, sizeof(struct pci_softc));
+//
+//static devclass_t pci_devclass;
+//DRIVER_MODULE(pci, pcib, pci_driver, pci_devclass, pci_modevent, 0);
+//MODULE_VERSION(pci, 1);
+
+DRIVER_MODULE(atapci_dis, pcib, hv_ata_pci_disengage_driver, hv_ata_pci_devclass, NULL, NULL);
 MODULE_VERSION(atapci_dis, 1);
 //MODULE_DEPEND(atapci_dis, ata, 1, 1, 1);
 
