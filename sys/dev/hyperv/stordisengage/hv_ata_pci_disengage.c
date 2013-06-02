@@ -96,7 +96,7 @@ device_printf(dev, "hv_ata_pci_probe dev_class/subslcass = %d, %d", pci_get_clas
 	if(bootverbose)
 		device_printf(dev, "Hyper-V ATA storage driver enabled.\n");
 
-	return (BUS_PROBE_VENDOR);
+	return (ENXIO);//(BUS_PROBE_VENDOR);
 }
 
 static int
