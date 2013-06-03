@@ -66,10 +66,11 @@ static int hv_check_for_hyper_v(void);
 static int
 hv_ata_pci_probe(device_t dev)
 {
+	struct ata_pci_controller *ctlr = device_get_softc(dev);
 	int ata_disk_enable = 0;
 	if(bootverbose)
-		device_printf(dev, "hv_ata_pci_probe dev_class/subslcass = %d, %d\n",
-			pci_get_class(dev), pci_get_subclass(dev));
+		device_printf(dev, "hv_ata_pci_probe dev_class/subslcass = %d, %d, %s\n",
+			pci_get_class(dev), pci_get_subclass(dev), ctlr->chip->text);
 	/* is this a storage class device ? */
 	if (pci_get_class(dev) != PCIC_STORAGE)
 		return (ENXIO);
@@ -80,6 +81,8 @@ hv_ata_pci_probe(device_t dev)
 
 	if(bootverbose)
 		device_printf(dev, "Hyper-V probe for disabling ATA-PCI, emulated driver\n");
+
+
 
 	/*
 	 * On Hyper-V the default is to use the enlightened driver for
