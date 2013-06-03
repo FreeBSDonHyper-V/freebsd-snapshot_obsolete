@@ -90,7 +90,8 @@ hv_ata_pci_probe(device_t dev)
 	if (hv_check_for_hyper_v()) {
 		if (getenv_int("hw.ata.disk_enable", &ata_disk_enable)) {
 			if(bootverbose)
-				device_printf(dev, "hw.ata.disk_enable flag is disabling Hyper-V ATA enlightened driver support\n");
+				device_printf(dev,
+				"hw.ata.disk_enable flag is disabling Hyper-V ATA driver support\n");
 			return (ENXIO);
 		}
 
