@@ -158,7 +158,7 @@ static driver_t hv_ata_pci_disengage_driver = {
 //DRIVER_MODULE(pci, pcib, pci_driver, pci_devclass, pci_modevent, 0);
 //MODULE_VERSION(pci, 1);
 
-DRIVER_MODULE(atapci_dis, ata_pci_driver, hv_ata_pci_disengage_driver, hv_ata_pci_devclass, NULL, NULL);
+DRIVER_MODULE(atapci_dis, pci, hv_ata_pci_disengage_driver, hv_ata_pci_devclass, NULL, NULL);
 MODULE_VERSION(atapci_dis, 1);
 MODULE_DEPEND(atapci_dis, ata, 1, 1, 1);
 
