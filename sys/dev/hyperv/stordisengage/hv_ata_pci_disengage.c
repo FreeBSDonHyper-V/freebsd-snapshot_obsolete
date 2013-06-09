@@ -60,6 +60,8 @@ static int hv_ata_pci_detach(device_t dev);
 
 static int hv_check_for_hyper_v(void);
 
+
+static boolean_t first_controller_seen = 0;
 /*
  * generic PCI ATA device probe
  */
@@ -101,6 +103,13 @@ hv_ata_pci_probe(device_t dev)
 		}
 
 	}
+
+	if(first_controller_seen) {
+		return (ENXIO);
+	}
+
+	first_controller_seen = 1;
+
 	if(bootverbose)
 		device_printf(dev, "Hyper-V ATA storage driver enabled.\n");
 
