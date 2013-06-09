@@ -104,7 +104,7 @@ hv_ata_pci_probe(device_t dev)
 
 	}
 
-	if(first_controller_seen) {
+	if(first_controller_seen == 1) {
 		return (ENXIO);
 	}
 
