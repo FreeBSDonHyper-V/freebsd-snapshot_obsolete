@@ -70,7 +70,7 @@ hv_ata_pci_probe(device_t dev)
 	if(bootverbose)
 		device_printf(dev,
 		    "hv_ata_pci_probe dev_class/subslcass/slot = %d, %d, %d\n",
-			pci_get_class(dev), pci_get_subclass(dev), device_get_slot(dev));
+			pci_get_class(dev), pci_get_subclass(dev), pci_get_slot(dev));
 			
 	/* is this a storage class device ? */
 	if (pci_get_class(dev) != PCIC_STORAGE)
