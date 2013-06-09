@@ -48,9 +48,9 @@ __FBSDID("$FreeBSD$");
 #include <dev/ata/ata-pci.h>
 #include <ata_if.h>
 
-#define HV_X64_MSR_GUEST_OS_ID 0x40000000
-#define HV_X64_CPUID_MIN 0x40000005
-#define HV_X64_CPUID_MAX 0x4000ffff
+#define HV_X64_MSR_GUEST_OS_ID	0x40000000
+#define HV_X64_CPUID_MIN	0x40000005
+#define HV_X64_CPUID_MAX	0x4000ffff
 
 
 /* prototypes */
@@ -68,8 +68,9 @@ hv_ata_pci_probe(device_t dev)
 {
 	int ata_disk_enable = 0;
 	if(bootverbose)
-		device_printf(dev, "hv_ata_pci_probe dev_class/subslcass = %d, %d\n",
-			pci_get_class(dev), pci_get_subclass(dev));
+		device_printf(dev,
+		    "hv_ata_pci_probe dev_class/subslcass/unit = %d, %d, %d\n",
+			pci_get_class(dev), pci_get_subclass(dev), dev->unit);
 			
 	/* is this a storage class device ? */
 	if (pci_get_class(dev) != PCIC_STORAGE)
@@ -80,7 +81,8 @@ hv_ata_pci_probe(device_t dev)
 		return (ENXIO);
 
 	if(bootverbose)
-		device_printf(dev, "Hyper-V probe for disabling ATA-PCI, emulated driver\n");
+		device_printf(dev,
+			"Hyper-V probe for disabling ATA-PCI, emulated driver\n");
 
 	/*
 	 * On Hyper-V the default is to use the enlightened driver for
@@ -92,7 +94,8 @@ hv_ata_pci_probe(device_t dev)
 		if (getenv_int("hw.ata.disk_enable", &ata_disk_enable)) {
 			if(bootverbose)
 				device_printf(dev,
-				"hw.ata.disk_enable flag is disabling Hyper-V ATA driver support\n");
+				"hw.ata.disk_enable flag is disabling Hyper-V"
+				" ATA driver support\n");
 			return (ENXIO);
 		}
 
