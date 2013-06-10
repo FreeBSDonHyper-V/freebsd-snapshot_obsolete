@@ -23,6 +23,33 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+/*-
+ * Copyright (c) 2009-2013 Microsoft Corp.
+ * Copyright (c) 2012 NetApp Inc.
+ * Copyright (c) 2012 Citrix Inc.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice unmodified, this list of conditions, and the following
+ *    disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
@@ -52,7 +79,6 @@ __FBSDID("$FreeBSD$");
 #define HV_X64_CPUID_MIN	0x40000005
 #define HV_X64_CPUID_MAX	0x4000ffff
 
-
 /* prototypes */
 static int hv_ata_pci_probe(device_t dev);
 static int hv_ata_pci_attach(device_t dev);
@@ -60,8 +86,6 @@ static int hv_ata_pci_detach(device_t dev);
 
 static int hv_check_for_hyper_v(void);
 
-
-static boolean_t first_controller_seen = 0;
 /*
  * generic PCI ATA device probe
  */
@@ -71,9 +95,8 @@ hv_ata_pci_probe(device_t dev)
 	int ata_disk_enable = 0;
 	if(bootverbose)
 		device_printf(dev,
-		    "hv_ata_pci_probe dev_class/subslcass/irq = %d, %d, %d, %d\n",
-			pci_get_class(dev), pci_get_subclass(dev),
-			pci_get_irq(dev), pci_get_device(dev));
+		    "hv_ata_pci_probe dev_class/subslcass = %d, %d\n",
+			pci_get_class(dev), pci_get_subclass(dev));
 			
 	/* is this a storage class device ? */
 	if (pci_get_class(dev) != PCIC_STORAGE)
@@ -85,7 +108,7 @@ hv_ata_pci_probe(device_t dev)
 
 	if(bootverbose)
 		device_printf(dev,
-			"Hyper-V probe for disabling ATA-PCI, emulated driver\n");
+		    "Hyper-V probe for disabling ATA-PCI, emulated driver\n");
 
 	/*
 	 * On Hyper-V the default is to use the enlightened driver for
@@ -103,12 +126,6 @@ hv_ata_pci_probe(device_t dev)
 		}
 
 	}
-
-	if(first_controller_seen == 1) {
-		return (ENXIO);
-	}
-
-	first_controller_seen = 1;
 
 	if(bootverbose)
 		device_printf(dev, "Hyper-V ATA storage driver enabled.\n");
@@ -153,10 +170,10 @@ hv_check_for_hyper_v(void)
 
 static device_method_t hv_ata_pci_methods[] = {
     /* device interface */
-    DEVMETHOD(device_probe,             hv_ata_pci_probe),
-    DEVMETHOD(device_attach,            hv_ata_pci_attach),
-    DEVMETHOD(device_detach,            hv_ata_pci_detach),
-    DEVMETHOD(device_shutdown,          bus_generic_shutdown),
+    DEVMETHOD(device_probe,	hv_ata_pci_probe),
+    DEVMETHOD(device_attach,	hv_ata_pci_attach),
+    DEVMETHOD(device_detach,	hv_ata_pci_detach),
+    DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 
     DEVMETHOD_END
 };
@@ -169,13 +186,8 @@ static driver_t hv_ata_pci_disengage_driver = {
     sizeof(struct ata_pci_controller),
 };
 
-//DEFINE_CLASS_0(pci, pci_driver, pci_methods, sizeof(struct pci_softc));
-//
-//static devclass_t pci_devclass;
-//DRIVER_MODULE(pci, pcib, pci_driver, pci_devclass, pci_modevent, 0);
-//MODULE_VERSION(pci, 1);
-
-DRIVER_MODULE(atapci_dis, pci, hv_ata_pci_disengage_driver, hv_ata_pci_devclass, NULL, NULL);
+DRIVER_MODULE(atapci_dis, pci, hv_ata_pci_disengage_driver,
+		hv_ata_pci_devclass, NULL, NULL);
 MODULE_VERSION(atapci_dis, 1);
 MODULE_DEPEND(atapci_dis, ata, 1, 1, 1);
 
