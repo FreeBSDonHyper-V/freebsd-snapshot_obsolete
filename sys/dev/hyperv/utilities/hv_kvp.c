@@ -64,7 +64,7 @@ static void hv_kvp_transaction_init(uint32_t, hv_vmbus_channel*, uint64_t, uint8
 static void hv_kvp_conn_register(void *p);
 static void hv_kvp_process_msg(void *p);
 static void hv_negotiate_version(
-		struct hv_vmbus_icmsg_hdr*              icmsghdrp,
+	struct hv_vmbus_icmsg_hdr*              icmsghdrp,
         struct hv_vmbus_icmsg_negotiate*        negop,
         uint8_t*                                buf);
 static hv_work_queue* kvp_work_queue=NULL;
@@ -179,7 +179,7 @@ hv_negotiate_version(
 
         negop = (struct hv_vmbus_icmsg_negotiate *) &buf[
                 sizeof(struct hv_vmbus_pipe_hdr) +
-                        sizeof(struct hv_vmbus_icmsg_hdr)];
+                sizeof(struct hv_vmbus_icmsg_hdr)];
         icframe_vercnt = negop->icframe_vercnt;
         icmsg_vercnt = negop->icmsg_vercnt;
 
@@ -489,7 +489,7 @@ ipinfo_utf16_utf8(hv_kvp_bsd_msg *hmsg, hv_kvp_bsd_msg *umsg)
 		printf("%x:", hmsg->body.kvp_ip_val.dns_addr[i]);
 #endif
 	/* IP Address */
-    len = utf16_to_utf8((char *)umsg->body.kvp_ip_val.ip_addr, MAX_IP_ADDR_SIZE,
+	len = utf16_to_utf8((char *)umsg->body.kvp_ip_val.ip_addr, MAX_IP_ADDR_SIZE,
                         (uint16_t *)hmsg->body.kvp_ip_val.ip_addr,
                         MAX_IP_ADDR_SIZE, UNUSED_FLAG, &err_ip);
 	/* Adapter ID : GUID */
@@ -501,8 +501,7 @@ ipinfo_utf16_utf8(hv_kvp_bsd_msg *hmsg, hv_kvp_bsd_msg *umsg)
 	if (strncmp(buf,(char *)umsg->body.kvp_ip_val.adapter_id,16) == 0)
 	{
 		/* Pass inteface Name */
-		printf("GUID Found\n");
-		
+		printf("GUID Found\n");	
 		strcpy((char *)umsg->body.kvp_ip_val.adapter_id,if_name);
 	}
 	else
@@ -571,7 +570,7 @@ host_user_kvp_msg(void)
 		break;
 	case KVP_OP_GET_IP_INFO:
 #ifdef DEBUG
-		printf("host_user_kvp_msg: in KVP_OP_GET_IP_INFO adapterId\n");
+	printf("host_user_kvp_msg: in KVP_OP_GET_IP_INFO adapterId\n");
 	for (i=0; i<=16; i++) 
 		printf("%x:", hmsg->body.kvp_ip_val.adapter_id[i]);
 #endif
@@ -850,13 +849,13 @@ hv_kvp_conn_register(void *p)
 		/* wait until the user daemon is ready */
 		if (kvp_connect_user() != KVP_SUCCESS) {
 #ifdef DEBUG
-			printf("kvp_conn: Connect to user daemon failed\n");
+		printf("kvp_conn: Connect to user daemon failed\n");
 #endif
-			return;
+		return;
 		}
 		else {
 #ifdef DEBUG
-			printf("kvp_conn: Connect to user daemon successful\n");
+		printf("kvp_conn: Connect to user daemon successful\n");
 #endif
 			conn_ready = TRUE;
 		}
