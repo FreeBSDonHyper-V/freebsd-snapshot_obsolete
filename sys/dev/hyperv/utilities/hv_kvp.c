@@ -327,7 +327,7 @@ kvp_rcv_user(void)
 {
 	int rcv_fd, rcv_error=0;
 	struct uio rcv_uio;
-    struct iovec rcv_iovec;
+    	struct iovec rcv_iovec;
 	struct thread *thread_ptr = curthread;
 #ifdef DEBUG1
 	struct hv_kvp_msg *toprint;
@@ -338,10 +338,10 @@ kvp_rcv_user(void)
 	memset(&rcv_uio, 0, sizeof(struct uio)); 	
 	rcv_iovec.iov_base = (void *)&hv_user_kvp_msg;
 	rcv_iovec.iov_len = sizeof(hv_kvp_bsd_msg);
-    rcv_uio.uio_iov = &rcv_iovec;
-    rcv_uio.uio_iovcnt = 1;
-    rcv_uio.uio_resid = rcv_iovec.iov_len;
-    rcv_uio.uio_segflg = UIO_SYSSPACE;
+    	rcv_uio.uio_iov = &rcv_iovec;
+    	rcv_uio.uio_iovcnt = 1;
+    	rcv_uio.uio_resid = rcv_iovec.iov_len;
+    	rcv_uio.uio_segflg = UIO_SYSSPACE;
 
 	/* Block read */
         rcv_error = kern_readv(thread_ptr, rcv_fd, &rcv_uio);
@@ -570,8 +570,8 @@ host_user_kvp_msg(void)
 		break;
 	case KVP_OP_GET_IP_INFO:
 #ifdef DEBUG
-	printf("host_user_kvp_msg: in KVP_OP_GET_IP_INFO adapterId\n");
-	for (i=0; i<=16; i++) 
+		printf("host_user_kvp_msg: in KVP_OP_GET_IP_INFO adapterId\n");
+		for (i=0; i<=16; i++) 
 		printf("%x:", hmsg->body.kvp_ip_val.adapter_id[i]);
 #endif
         	utf16_to_utf8((char *)umsg->body.kvp_ip_val.adapter_id,
@@ -583,8 +583,8 @@ host_user_kvp_msg(void)
 			hmsg->body.kvp_ip_val.addr_family;
 #ifdef DEBUG
 		printf("\nadapter_id=%s addr_family:%d\n", 
-			(char *)umsg->body.kvp_ip_val.adapter_id,
-			umsg->body.kvp_ip_val.addr_family);
+		(char *)umsg->body.kvp_ip_val.adapter_id,
+		umsg->body.kvp_ip_val.addr_family);
 #endif
 		break;
 	case KVP_OP_SET:
