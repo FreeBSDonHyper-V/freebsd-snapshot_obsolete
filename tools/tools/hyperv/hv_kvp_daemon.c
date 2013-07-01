@@ -116,7 +116,6 @@ static char kvp_recv_buffer[4096 * 2];
 	static struct sockaddr_nl addr;
 #else
 	static struct sockaddr_un addr;
-	//char *socket_path = "/var/opt/hyperv/socket";	
 	char *socket_path = BSD_SOC_PATH;
 #endif
 static int in_hand_shake = 1;
@@ -159,7 +158,6 @@ static struct kvp_file_state kvp_file_info[KVP_POOL_COUNT];
 
 static void kvp_acquire_lock(int pool)
 {
-	//struct flock fl = {F_WRLCK, SEEK_SET, 0, 0, 0};
 	struct flock fl = {0, 0, 0, F_WRLCK, SEEK_SET,0};
 	fl.l_pid = getpid();
 
@@ -171,7 +169,6 @@ static void kvp_acquire_lock(int pool)
 
 static void kvp_release_lock(int pool)
 {
-	//struct flock fl = {F_UNLCK, SEEK_SET, 0, 0, 0};
 	struct flock fl = {0, 0, 0, F_UNLCK, SEEK_SET, 0};
 	fl.l_pid = getpid();
 
@@ -663,14 +660,12 @@ static char *get_mac_address(const char *sdlstring)
 	}
 	mac = strdup(buf);
 	return mac;
-
 }
+
 static char *kvp_get_if_name(char *guid)
 {
 
 	char *guid_str;
-	printf("kvp_get_if_name:before else\n");
-
 #ifndef FREEBSD
 	DIR *dir;
 	struct dirent *entry;
@@ -719,34 +714,15 @@ static char *kvp_get_if_name(char *guid)
 		fclose(file);
 	}
 	closedir(dir);
-#else
-	char *if_name;
-	char *buf_ptr;
-	int status;
-	struct ifaddrs * ifaddrs_ptr;
-        struct sockaddr_dl * sdl;
-#ifdef DEBUG
-	printf("In kvp_get_if_name\n");
-#endif 
-        status = getifaddrs (& ifaddrs_ptr);
-        if (status >= 0) {
-		do { 
-                	sdl = (struct sockaddr_dl *) ifaddrs_ptr->ifa_addr;
-                	if ((sdl->sdl_type == IFT_ETHER )){ // Need to check what is guid and how can I get from systemcall.
-				printf("MAC :%s\n",get_mac_address(LLADDR(sdl)));
-	if (strncmp("29efdcf9-2a9d-4789-a9be-60eddde275d9", guid, 16) == 0) {
-					if_name = ifaddrs_ptr->ifa_name;
-					printf("Compare Success\n");
-					break;
-				}
-
-                	}
-        	} while( (ifaddrs_ptr = ifaddrs_ptr->ifa_next) != NULL);
-	}
-
-#endif
-	printf("if_name=%s\n",if_name);
 	return if_name;
+#else
+	/*
+	 *
+	 * FreeBSD - implementation gets the interface name from kvp driver 
+	 * GUID Comparision is done in kvp driver 
+	 * 
+	 */ 
+#endif
 }
 
 
@@ -791,7 +767,8 @@ static char *kvp_if_name_to_mac(char *if_name)
         if (status >= 0) {
                 do {
                         sdl = (struct sockaddr_dl *) ifaddrs_ptr->ifa_addr;
-                        if (sdl->sdl_type == IFT_ETHER  && ( strcmp(ifaddrs_ptr->ifa_name, if_name) == 0)){ // Need to check what is guid and how can I get from systemcall.
+                        if (sdl->sdl_type == IFT_ETHER  &&
+				( strcmp(ifaddrs_ptr->ifa_name, if_name) == 0)){ 
 				buf_ptr = get_mac_address(LLADDR(sdl));		
 				mac_addr = strdup(buf_ptr);
                                 break;
@@ -800,7 +777,6 @@ static char *kvp_if_name_to_mac(char *if_name)
         }
 #endif
 	free(buf_ptr);
-	printf("MAC: %s \n",mac_addr);
 	return mac_addr;
 }
 
@@ -939,7 +915,6 @@ static void kvp_get_ipconfig_info(char *if_name,
 	sprintf(cmd, "%s %s", "ip route show dev", if_name);
 	strcat(cmd, " | awk '/default/ {print $3 }'");
 #else
-	//sprintf(cmd, "%s %s", "netstat -r -f inet | grep", if_name);
 	sprintf(cmd, "%s %s", "netstat -rn | grep", if_name);
 	strcat(cmd, " | awk '/default/ {print $2 }'");
 #endif
@@ -983,7 +958,7 @@ static void kvp_get_ipconfig_info(char *if_name,
 	 */
 #ifndef FREEBSD
 	sprintf(cmd, "%s",  "hv_get_dns_info");
-#elsei
+#else
 	/* Scripts are stored in /usr/local/hyperv/ directory */
 	sprintf(cmd, "%s",  "/usr/local/hyperv/hv_get_dns_info");
 #endif	
@@ -1655,9 +1630,9 @@ netlink_send(int fd, struct cn_msg *msg)
 }
 #endif
 #if 0
-	static int
-	netlink_send(int fd, struct cn_msg *msg)
-	{
+static int
+netlink_send(int fd, struct cn_msg *msg)
+{
 	struct nlmsghdr *nlh;
 	unsigned int size;
 	struct msghdr message;
@@ -1686,9 +1661,9 @@ netlink_send(int fd, struct cn_msg *msg)
 	message.msg_iovlen = 2;
        	//ret = write(fd, &message, sizeof(struct msghdr));
 	//printf("Sendmsg = %d\n", ret); 
-//	return sendmsg(fd, &message, 0);
+	//return sendmsg(fd, &message, 0);
 	return ret; 
-	}
+}
 #endif
 
 int main(void)
@@ -1710,7 +1685,7 @@ int main(void)
 	int	pool;
 	char	*if_name;
 	struct hv_kvp_ipaddr_value *kvp_ip_val;
-
+	char cwd[1024];
 	daemon(1, 0);
 	openlog("KVP", 0, LOG_USER);
 	syslog(LOG_INFO, "KVP starting; pid is:%d", getpid());
@@ -1730,7 +1705,9 @@ int main(void)
 		syslog(LOG_ERR, "Failed to initialize the pools");
 		exit(EXIT_FAILURE);
 	}
-
+	/* Find the Current Directory */ 
+	//getcwd(cwd, sizeof(cwd));
+	//syslog(LOG_INFO, "KVP Directory:CWD is:%s", cwd);
 #ifndef FREEBSD
 	fd = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_CONNECTOR);
 	if (fd < 0) {
@@ -1830,7 +1807,7 @@ int main(void)
 		socklen_t addr_l = sizeof(addr);
 		pfd.events = POLLIN;
 		pfd.revents = 0;
-//		poll(&pfd, 1, -1);
+		//poll(&pfd, 1, -1);
 		
 		len = recvfrom(fd, kvp_recv_buffer, sizeof(kvp_recv_buffer), 0,
 				addr_p, &addr_l);
