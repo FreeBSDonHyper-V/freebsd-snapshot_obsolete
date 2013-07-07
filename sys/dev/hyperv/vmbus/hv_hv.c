@@ -51,7 +51,6 @@
 
 
 static u_int hv_get_timecount(struct timecounter *tc);
-static u_int hv_get_timecount(struct timecounter *tc);
 
 static inline void do_cpuid_inline(unsigned int op, unsigned int *eax,
 	unsigned int *ebx, unsigned int *ecx, unsigned int *edx) {
