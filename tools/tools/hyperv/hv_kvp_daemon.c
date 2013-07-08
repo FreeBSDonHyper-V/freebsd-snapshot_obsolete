@@ -47,7 +47,6 @@
 #ifndef FREEBSD
 #define FREEBSD
 #endif
-#define DEBUG 
 
 #ifndef FREEBSD
 	#include <linux/types.h>
@@ -349,9 +348,6 @@ static int kvp_key_delete(int pool, __u8 *key, int key_size)
 	/*
 	 * First update the in-memory state.
 	 */
-#ifdef DEBUG
-	printf("kvp_key_delete : key_size = %d pool =%d\n", key_size, pool);
-#endif
 	kvp_update_mem_state(pool);
 
 	num_records = kvp_file_info[pool].num_records;
@@ -394,10 +390,6 @@ kvp_key_add_or_modify(int pool, __u8 *key, __u32 key_size, __u8 *value,
 	struct kvp_record *record;
 	int num_blocks;
 
-#ifdef DEBUG
-	printf("kvp_key_add_or_modify: key_size = %d value_size = %d\n", 
-		key_size, value_size);
-#endif
 	if ((key_size > HV_KVP_EXCHANGE_MAX_KEY_SIZE) ||
 		(value_size > HV_KVP_EXCHANGE_MAX_VALUE_SIZE)) {
 		printf("kvp_key_add_or_modify: returning 1\n");
@@ -452,10 +444,6 @@ static int kvp_get_value(int pool, __u8 *key, int key_size, __u8 *value,
 	int num_records;
 	struct kvp_record *record;
 
-#ifdef DEBUG
-	printf("kvp_get_value: key_size = %d value_size = %d\n", 
-		key_size, value_size);
-#endif
 	if ((key_size > HV_KVP_EXCHANGE_MAX_KEY_SIZE) ||
 		(value_size > HV_KVP_EXCHANGE_MAX_VALUE_SIZE))
 		return 1;
@@ -486,10 +474,6 @@ static int kvp_pool_enumerate(int pool, int index, __u8 *key, int key_size,
 {
 	struct kvp_record *record;
 
-#ifdef DEBUG
-	printf("kvp_pool_enum:pool:%d index:%d key_size =%d value_size =%d\n",
-	 	pool, index, key_size, value_size);
-#endif
 	/*
 	 * First update our in-memory database.
 	 */
@@ -502,9 +486,6 @@ static int kvp_pool_enumerate(int pool, int index, __u8 *key, int key_size,
 
 	memcpy(key, record[index].key, key_size);
 	memcpy(value, record[index].value, value_size);
-#ifdef DEBUG
-	printf("kvp_pool_enumerate: key:%s value: %s\n", key, value);
-#endif
 	return 0;
 }
 
@@ -861,9 +842,6 @@ static char *kvp_mac_to_if_name(char *mac)
 				}
 			}
 		}while( (ifaddrs_ptr = ifaddrs_ptr->ifa_next) != NULL);
-#ifdef DEBUG
-	printf("Interface name is : %s\n", if_name);
-#endif
 	freeifaddrs(ifaddrs_ptr);
 #endif
 	return if_name;
@@ -1771,26 +1749,17 @@ int main(void)
 		exit(EXIT_FAILURE);
 	}
 
-#ifdef DEBUG
-	printf("First start the daemon program and  then kvp driver\n");
-#endif
   	if ( (cl = accept(fd, NULL, NULL)) == -1) {
        		perror("accept error");
         	exit(-1);
   	}
 
   	/* successfully connected to the kernel */
-#ifdef DEBUG
-	printf("kvp_daemon main: connected to the kvp driver\n");
-#endif
 
   	hv_msg = (struct hv_kvp_msg *)kvp_send_buffer;
   	hv_msg->hdr.kvp_hdr.operation = KVP_OP_REGISTER;
 
   	len = write(cl, hv_msg, sizeof(struct hv_kvp_msg));
-#ifdef DEBUG
-  	printf("kvp_daemon main: registered with kvp driver %u bytes\n", len);
-#endif
 	if (len < 0) {
 		syslog(LOG_ERR, "write failed; error:%d", len);
 		close(fd);
@@ -1799,9 +1768,6 @@ int main(void)
 
 #endif
 	while (1) {
-#ifdef DEBUG
-		printf("kvp_daemon main:waiting for read\n");
-#endif
 #ifndef FREEBSD
 		//struct sockaddr *addr_p = (struct sockaddr *) &addr;
 		socklen_t addr_l = sizeof(addr);
@@ -1844,10 +1810,6 @@ int main(void)
 		pool = hv_msg->hdr.kvp_hdr.pool;
 		hv_msg->hdr.error = HV_S_OK;
 
-#ifdef DEBUG
-		printf("kvp_daemon main: Received Op:%d pool:%d len:%d\n", 
-				op, pool, len);
-#endif
 #ifndef FREEBSD
 		if ((in_hand_shake) && (op == KVP_OP_REGISTER1)) {
 			/*
@@ -1870,9 +1832,6 @@ int main(void)
 
 		switch (op) {
 		case KVP_OP_GET_IP_INFO:
-#ifdef DEBUG
-		printf("kvp_daemon main: KVP_OP_GET_IP_INFO\n");
-#endif
 			kvp_ip_val = &hv_msg->body.kvp_ip_val;
 			if_name =
 			kvp_mac_to_if_name((char *)kvp_ip_val->adapter_id);
@@ -1895,12 +1854,6 @@ int main(void)
 			break;
 
 		case KVP_OP_SET_IP_INFO:
-#ifdef DEBUG
-		printf("kvp_daemon main: KVP_OP_SET_IP_INFO\n");
-		printf("\nAdapter_Family:%u\n",(char)kvp_ip_val->addr_family);
-		printf("ip_addr:%s \n",(char *)kvp_ip_val->ip_addr); 
-		
-#endif
 			kvp_ip_val = &hv_msg->body.kvp_ip_val;
 			if_name = (char *)kvp_ip_val->adapter_id; 
 			if (if_name == NULL) {
@@ -1942,19 +1895,11 @@ int main(void)
 			break;
 
 		default:
-#ifdef DEBUG
-			printf("kvp_daemon main: default\n");
-#endif
 			break;
 		}
 
 		if (op != KVP_OP_ENUMERATE)
 			goto kvp_done;
-
-#ifdef DEBUG
-		printf("kvp_daemon main: ENUMERATE pool:%d, index:%d\n",
-			pool, hv_msg->body.kvp_enum_data.index);
-#endif
 
 		/*
 		 * If the pool is KVP_POOL_AUTO, dynamically generate
@@ -2042,9 +1987,6 @@ kvp_done:
 		len = netlink_send(fd, incoming_cn_msg);
 #else
 		len = write(cl, hv_msg, sizeof(struct hv_kvp_msg));
-#ifdef DEBUG
-		printf("kvp_daemon main: write to kvp driver len:%d\n", len);
-#endif
 #endif
 		if (len < 0) {
 			syslog(LOG_ERR, "net_link send failed; error:%d", len);
