@@ -1,4 +1,3 @@
-
 Create the below directories if they does not exist already
 - mkdir /usr/local/hyperv
 - mkdir /var/opt/hyperv
@@ -17,6 +16,9 @@ Copy hv_kvpd script to /etc/rc.d/
 - cp hv_kvpd /etc/rc.d/
 Set exectuing permissions using chmod command 
 - chmod 755 hv_kvpd
+
+- Edit rc.conf file - Add 
+hv_kvp_daemon_enable="YES"
 
 Reboot the machine - it will start hv_kvp_daemon and load hv_utils.ko driver.
 - reboot
