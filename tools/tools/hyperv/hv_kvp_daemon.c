@@ -153,7 +153,7 @@ struct kvp_file_state {
 	char fname[MAX_FILE_NAME];
 };
 
-static struct kvp_file_state kvp_file_info[KVP_POOL_COUNT];
+static struct kvp_file_state kvp_file_info[HV_KVP_POOL_COUNT];
 
 static void kvp_acquire_lock(int pool)
 {
@@ -280,7 +280,7 @@ static int kvp_file_init(void)
 		}
 	}
 
-	for (i = 0; i < KVP_POOL_COUNT; i++) {
+	for (i = 0; i < HV_KVP_POOL_COUNT; i++) {
 		fname = kvp_file_info[i].fname;
 		records_read = 0;
 		num_blocks = 1;
@@ -1010,10 +1010,10 @@ static int kvp_process_ip_address(void *addrp,
 	}
 
 	if ((length - *offset) < addr_length + 1)
-		return HV_E_FAIL;
+		return HV_KVP_E_FAIL;
 	if (str == NULL) {
 		strcpy(buffer, "inet_ntop failed\n");
-		return HV_E_FAIL;
+		return HV_KVP_E_FAIL;
 	}
 	if (*offset == 0)
 		strcpy(buffer, tmp);
@@ -1043,7 +1043,7 @@ kvp_get_ip_info(int family, char *if_name, int op,
 	char *sn_str;
 	struct sockaddr_in6 *addr6;
 
-	if (op == KVP_OP_ENUMERATE) {
+	if (op == HV_KVP_OP_ENUMERATE) {
 		buffer = out_buffer;
 	} else {
 		ip_buffer = out_buffer;
@@ -1057,7 +1057,7 @@ kvp_get_ip_info(int family, char *if_name, int op,
 
 	if (getifaddrs(&ifap)) {
 		strcpy(buffer, "getifaddrs failed\n");
-		return HV_E_FAIL;
+		return HV_KVP_E_FAIL;
 	}
 
 	curp = ifap;
@@ -1093,7 +1093,7 @@ kvp_get_ip_info(int family, char *if_name, int op,
 			continue;
 		}
 
-		if (op == KVP_OP_GET_IP_INFO) {
+		if (op == HV_KVP_OP_GET_IP_INFO) {
 			/*
 			 * Gather info other than the IP address.
 			 * IP address info will be gathered later.
@@ -1253,7 +1253,7 @@ static int kvp_write_file(FILE *f, char *s1, char *s2, char *s3)
 	ret = fprintf(f, "%s%s%s%s\n", s1, s2, "=", s3);
 
 	if (ret < 0)
-		return HV_E_FAIL;
+		return HV_KVP_E_FAIL;
 
 	return 0;
 }
@@ -1406,7 +1406,7 @@ static int kvp_set_ip_info(char *if_name, struct hv_kvp_ipaddr_value *new_val)
 
 	if (file == NULL) {
 		syslog(LOG_ERR, "Failed to open config file");
-		return HV_E_FAIL;
+		return HV_KVP_E_FAIL;
 	}
 
 	/*
@@ -1415,7 +1415,7 @@ static int kvp_set_ip_info(char *if_name, struct hv_kvp_ipaddr_value *new_val)
 
 	mac_addr = kvp_if_name_to_mac(if_name);
 	if (mac_addr == NULL) {
-		error = HV_E_FAIL;
+		error = HV_KVP_E_FAIL;
 		goto setval_error;
 	}
 
@@ -1468,7 +1468,7 @@ static int kvp_set_ip_info(char *if_name, struct hv_kvp_ipaddr_value *new_val)
 
         if (file == NULL) {
                 syslog(LOG_ERR, "FreeBSD Failed to open config file");
-                return HV_E_FAIL;
+                return HV_KVP_E_FAIL;
         }
 
         /*
@@ -1478,7 +1478,7 @@ static int kvp_set_ip_info(char *if_name, struct hv_kvp_ipaddr_value *new_val)
         mac_addr = kvp_if_name_to_mac(if_name);
         if (mac_addr == NULL) {
 		printf(" MAC Extract Failed\n");
-                error = HV_E_FAIL;
+                error = HV_KVP_E_FAIL;
                 goto setval_error;
         }
 	/* MAC Address */
@@ -1715,7 +1715,7 @@ int main(void)
 	message->id.val = CN_KVP_VAL;
 
 	hv_msg = (struct hv_kvp_msg *)message->data;
-	hv_msg->hdr.kvp_hdr.operation = KVP_OP_REGISTER1;
+	hv_msg->hdr.kvp_hdr.operation = HV_KVP_OP_REGISTER1;
 	message->ack = 0;
 	message->len = sizeof(struct hv_kvp_msg);
 	len = netlink_send(fd, message);
@@ -1752,12 +1752,11 @@ int main(void)
   	if ( (cl = accept(fd, NULL, NULL)) == -1) {
        		perror("accept error");
         	exit(-1);
-  	}
+  	}	
 
   	/* successfully connected to the kernel */
-
   	hv_msg = (struct hv_kvp_msg *)kvp_send_buffer;
-  	hv_msg->hdr.kvp_hdr.operation = KVP_OP_REGISTER;
+  	hv_msg->hdr.kvp_hdr.operation = HV_KVP_OP_REGISTER;
 
   	len = write(cl, hv_msg, sizeof(struct hv_kvp_msg));
 	if (len < 0) {
@@ -1808,10 +1807,9 @@ int main(void)
 		 */
 		op = hv_msg->hdr.kvp_hdr.operation;
 		pool = hv_msg->hdr.kvp_hdr.pool;
-		hv_msg->hdr.error = HV_S_OK;
-
+		hv_msg->hdr.error = HV_KVP_S_OK;
 #ifndef FREEBSD
-		if ((in_hand_shake) && (op == KVP_OP_REGISTER1)) {
+		if ((in_hand_shake) && (op == HV_KVP_OP_REGISTER1)) {
 			/*
 			 * Driver is registering with us; stash away the version
 			 * information.
@@ -1831,7 +1829,7 @@ int main(void)
 #endif
 
 		switch (op) {
-		case KVP_OP_GET_IP_INFO:
+		case HV_KVP_OP_GET_IP_INFO:
 			kvp_ip_val = &hv_msg->body.kvp_ip_val;
 			if_name =
 			kvp_mac_to_if_name((char *)kvp_ip_val->adapter_id);
@@ -1840,11 +1838,11 @@ int main(void)
 				 * We could not map the mac address to an
 				 * interface name; return error.
 				 */
-				hv_msg->hdr.error = HV_E_FAIL;
+				hv_msg->hdr.error = HV_KVP_E_FAIL;
 				break;
 			}
 			error = kvp_get_ip_info(
-						0, if_name, KVP_OP_GET_IP_INFO,
+						0, if_name, HV_KVP_OP_GET_IP_INFO,
 						kvp_ip_val,
 						(MAX_IP_ADDR_SIZE * 2));
 			if (error)
@@ -1853,7 +1851,7 @@ int main(void)
 			free(if_name);
 			break;
 
-		case KVP_OP_SET_IP_INFO:
+		case HV_KVP_OP_SET_IP_INFO:
 			kvp_ip_val = &hv_msg->body.kvp_ip_val;
 			if_name = (char *)kvp_ip_val->adapter_id; 
 			if (if_name == NULL) {
@@ -1861,7 +1859,7 @@ int main(void)
 				 * We could not map the guid to an
 				 * interface name; return error.
 				 */
-				hv_msg->hdr.error = HV_GUID_NOTFOUND;
+				hv_msg->hdr.error = HV_KVP_GUID_NOTFOUND;
 				break;
 			}
 			error = kvp_set_ip_info(if_name, kvp_ip_val);
@@ -1869,51 +1867,51 @@ int main(void)
 				hv_msg->hdr.error = error;
 			break;
 
-		case KVP_OP_SET:
+		case HV_KVP_OP_SET:
 			if (kvp_key_add_or_modify(pool,
 					hv_msg->body.kvp_set.data.key,
 					hv_msg->body.kvp_set.data.key_size,
 					hv_msg->body.kvp_set.data.msg_value.value,
 					hv_msg->body.kvp_set.data.value_size))
-					hv_msg->hdr.error = HV_S_CONT;
+					hv_msg->hdr.error = HV_KVP_S_CONT;
 			break;
 
-		case KVP_OP_GET:
+		case HV_KVP_OP_GET:
 			if (kvp_get_value(pool,
 					hv_msg->body.kvp_set.data.key,
 					hv_msg->body.kvp_set.data.key_size,
 					hv_msg->body.kvp_set.data.msg_value.value,
 					hv_msg->body.kvp_set.data.value_size))
-					hv_msg->hdr.error = HV_S_CONT;
+					hv_msg->hdr.error = HV_KVP_S_CONT;
 			break;
 
-		case KVP_OP_DELETE:
+		case HV_KVP_OP_DELETE:
 			if (kvp_key_delete(pool,
 					hv_msg->body.kvp_delete.key,
 					hv_msg->body.kvp_delete.key_size))
-					hv_msg->hdr.error = HV_S_CONT;
+					hv_msg->hdr.error = HV_KVP_S_CONT;
 			break;
 
 		default:
 			break;
 		}
 
-		if (op != KVP_OP_ENUMERATE)
+		if (op != HV_KVP_OP_ENUMERATE)
 			goto kvp_done;
 
 		/*
-		 * If the pool is KVP_POOL_AUTO, dynamically generate
+		 * If the pool is HV_KVP_POOL_AUTO, dynamically generate
 		 * both the key and the value; if not read from the
 		 * appropriate pool.
 		 */
-		if (pool != KVP_POOL_AUTO) {
+		if (pool != HV_KVP_POOL_AUTO) {
 			if (kvp_pool_enumerate(pool,
 					hv_msg->body.kvp_enum_data.index,
 					hv_msg->body.kvp_enum_data.data.key,
 					HV_KVP_EXCHANGE_MAX_KEY_SIZE,
 					hv_msg->body.kvp_enum_data.data.msg_value.value,
 					HV_KVP_EXCHANGE_MAX_VALUE_SIZE))
-					hv_msg->hdr.error = HV_S_CONT;
+					hv_msg->hdr.error = HV_KVP_S_CONT;
 			goto kvp_done;
 		}
 
@@ -1934,12 +1932,12 @@ int main(void)
 			strcpy(key_value, lic_version);
 			break;
 		case NetworkAddressIPv4:
-			kvp_get_ip_info(AF_INET, NULL, KVP_OP_ENUMERATE,
+			kvp_get_ip_info(AF_INET, NULL, HV_KVP_OP_ENUMERATE,
 				key_value, HV_KVP_EXCHANGE_MAX_VALUE_SIZE);
 			strcpy(key_name, "NetworkAddressIPv4");
 			break;
 		case NetworkAddressIPv6:
-			kvp_get_ip_info(AF_INET6, NULL, KVP_OP_ENUMERATE,
+			kvp_get_ip_info(AF_INET6, NULL, HV_KVP_OP_ENUMERATE,
 				key_value, HV_KVP_EXCHANGE_MAX_VALUE_SIZE);
 			strcpy(key_name, "NetworkAddressIPv6");
 			break;
@@ -1968,7 +1966,7 @@ int main(void)
 			strcpy(key_name, "ProcessorArchitecture");
 			break;
 		default:
-			hv_msg->hdr.error = HV_S_CONT;
+			hv_msg->hdr.error = HV_KVP_S_CONT;
 			break;
 		}
 		/*
