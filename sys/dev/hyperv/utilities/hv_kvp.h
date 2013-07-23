@@ -116,16 +116,16 @@
  * Registry value types.
  */
 
-#define REG_SZ 1
-#define REG_U32 4
-#define REG_U64 8
+#define HV_REG_SZ  1
+#define HV_REG_U32 4
+#define HV_REG_U64 8
 
 
 /*
  * Daemon code not supporting IP injection (legacy daemon).
  */
 
-#define KVP_OP_REGISTER	4
+#define HV_KVP_OP_REGISTER	4
 
 /*
  * Daemon code supporting IP injection.
@@ -137,35 +137,35 @@
 #define KVP_OP_REGISTER1 100
 
 enum hv_kvp_exchg_op {
-	KVP_OP_GET = 0,
-	KVP_OP_SET,
-	KVP_OP_DELETE,
-	KVP_OP_ENUMERATE,
-	KVP_OP_GET_IP_INFO,
-	KVP_OP_SET_IP_INFO,
-	KVP_OP_COUNT /* Number of operations, must be last. */
+	HV_KVP_OP_GET = 0,
+	HV_KVP_OP_SET,
+	HV_KVP_OP_DELETE,
+	HV_KVP_OP_ENUMERATE,
+	HV_KVP_OP_GET_IP_INFO,
+	HV_KVP_OP_SET_IP_INFO,
+	HV_KVP_OP_COUNT /* Number of operations, must be last. */
 };
 
 enum hv_kvp_exchg_pool {
-	KVP_POOL_EXTERNAL = 0,
-	KVP_POOL_GUEST,
-	KVP_POOL_AUTO,
-	KVP_POOL_AUTO_EXTERNAL,
-	KVP_POOL_AUTO_INTERNAL,
-	KVP_POOL_COUNT /* Number of pools, must be last. */
+	HV_KVP_POOL_EXTERNAL = 0,
+	HV_KVP_POOL_GUEST,
+	HV_KVP_POOL_AUTO,
+	HV_KVP_POOL_AUTO_EXTERNAL,
+	HV_KVP_POOL_AUTO_INTERNAL,
+	HV_KVP_POOL_COUNT /* Number of pools, must be last. */
 };
 
 /*
  * Some Hyper-V status codes.
  */
-#define HV_S_OK				0x00000000
-#define HV_E_FAIL			0x80004005
-#define HV_S_CONT			0x80070103
+#define HV_KVP_S_OK				0x00000000
+#define HV_KVP_E_FAIL			0x80004005
+#define HV_KVP_S_CONT			0x80070103
 #define HV_ERROR_NOT_SUPPORTED		0x80070032
 #define HV_ERROR_MACHINE_LOCKED		0x800704F7
 #define HV_ERROR_DEVICE_NOT_CONNECTED	0x8007048F
 #define HV_INVALIDARG			0x80070057
-#define HV_GUID_NOTFOUND		0x80041002
+#define HV_KVP_GUID_NOTFOUND		0x80041002
 
 #define ADDR_FAMILY_NONE	0x00
 #define ADDR_FAMILY_IPV4	0x01

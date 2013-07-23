@@ -28,7 +28,6 @@
 /**
  * Code for handling all KVP related messages 
  */
-
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
@@ -48,11 +47,18 @@
 #include <net/if_arp.h>
 #include <dev/hyperv/include/hyperv.h>
 #include <dev/hyperv/netvsc/hv_net_vsc.h>
-#include "unicode.h"
 #include "hv_kvp.h"
 
+/* Unicode Conversions */
+#include <sys/cdefs.h>
+#include <sys/_null.h>
+
+static size_t convert8_to_16(uint16_t *, size_t, const char *, size_t, int *);
+static size_t convert16_to_8(char *, size_t, const uint16_t *, size_t, int *);
+
+/* Unicode declarations ends */
+
 #define DEBUG
-#define UNUSED_FLAG 1 /* Unused flags in utf routines */
 #define KVP_SUCCESS	0
 #define kvp_hdr hdr.kvp_hdr
 typedef struct hv_kvp_msg hv_kvp_bsd_msg;
@@ -162,7 +168,7 @@ hv_kvp_negotiate_version(
         icframe_vercnt = negop->icframe_vercnt;
         icmsg_vercnt = negop->icmsg_vercnt;
 
- 	/*
+		/*
          * Select the framework version number we will
          * support.
          */
@@ -284,6 +290,167 @@ kvp_rcv_user(void)
 	return (rcv_error);
 }
 
+/* Converts utf8 to utf16 */
+
+static size_t
+convert8_to_16(uint16_t *dst, size_t dst_len,
+              const char *src, size_t src_len,
+			  int *errp)
+{
+    const unsigned char *s;
+    size_t spos, dpos;
+    int error, flags = 1;
+    uint16_t c;
+#define IS_CONT(c)      (((c)&0xc0) == 0x80)
+
+    error = 0;
+    s = (const unsigned char *)src;
+    spos = dpos = 0;
+ 
+    while (spos<src_len) {
+        if (s[spos] < 0x80)
+            c = s[spos++];
+        else if ((flags & 0x03)
+                 && (spos >= src_len || !IS_CONT(s[spos+1]))
+                 && s[spos]>=0xa0) {
+            /* not valid UTF-8, assume ISO 8859-1 */
+            c = s[spos++];
+        }
+        else if (s[spos] < 0xc0 || s[spos] >= 0xf5) {
+            /* continuation byte without lead byte
+               or lead byte for codepoint above 0x10ffff */
+            error++;
+            spos++;
+            continue;
+        }
+        else if (s[spos] < 0xe0) {
+            if (spos >= src_len || !IS_CONT(s[spos+1])) {
+                spos++;
+                error++;
+                continue;
+            }
+            c = ((s[spos] & 0x3f) << 6) | (s[spos+1] & 0x3f);
+            spos += 2;
+            if (c < 0x80) {
+                /* overlong encoding */
+                error++;
+                continue;
+		}
+        }
+        else if (s[spos] < 0xf0) {
+            if (spos >= src_len-2
+                || !IS_CONT(s[spos+1]) || !IS_CONT(s[spos+2])) {
+                spos++;
+                error++;
+                continue;
+            }
+            c = ((s[spos] & 0x0f) << 12) | ((s[spos+1] & 0x3f) << 6)
+                | (s[spos+2] & 0x3f);
+            spos += 3;
+            if (c < 0x800 || (c & 0xdf00) == 0xd800 ) {
+                /* overlong encoding or encoded surrogate */
+                error++;
+                continue;
+            }
+        }
+        else {
+            uint32_t cc;
+            /* UTF-16 surrogate pair */
+
+            if (spos >= src_len-3 || !IS_CONT(s[spos+1])
+                || !IS_CONT(s[spos+2]) || !IS_CONT(s[spos+3])) {
+                spos++;
+                error++;
+
+                continue;
+            }
+            cc = ((s[spos] & 0x03) << 18) | ((s[spos+1] & 0x3f) << 12)
+| ((s[spos+2] & 0x3f) << 6) | (s[spos+3] & 0x3f);
+            spos += 4;
+            if (cc < 0x10000) {
+                /* overlong encoding */
+                error++;
+                continue;
+            }
+            if (dst && dpos < dst_len)
+                dst[dpos] = (0xd800 | ((cc-0x10000)>>10));
+            dpos++;
+            c = 0xdc00 | ((cc-0x10000) & 0x3ffff);
+        }
+
+        if (dst && dpos < dst_len)
+            dst[dpos] = c;
+        dpos++;
+    }
+
+    if (errp)
+       *errp = error;
+
+    return dpos;
+
+#undef IS_CONT
+}
+
+/* Converts utf16 to utf8 */
+
+static size_t
+convert16_to_8(char *dst, size_t dst_len,
+              const uint16_t *src, size_t src_len,
+              int *errp)
+{
+    uint16_t spos, dpos;
+    int error;
+#define CHECK_LENGTH(l) (dpos > dst_len-(l) ? dst=NULL : NULL)
+#define ADD_BYTE(b)     (dst ? dst[dpos] = (b) : 0, dpos++)
+
+    error = 0;
+    dpos = 0;
+ for (spos=0; spos<src_len; spos++) {
+	 if (src[spos] < 0x80) {
+            CHECK_LENGTH(1);
+            ADD_BYTE(src[spos]);
+        }
+        else if (src[spos] < 0x800) {
+            CHECK_LENGTH(2);
+            ADD_BYTE(0xc0 | (src[spos]>>6));
+            ADD_BYTE(0x80 | (src[spos] & 0x3f));
+        }
+        else if ((src[spos] & 0xdc00) == 0xd800) {
+            uint32_t c;
+            /* first surrogate */
+            if (spos == src_len - 1 || (src[spos] & 0xdc00) != 0xdc00) {
+                /* no second surrogate present */
+                error++;
+                continue;
+            }
+            spos++;
+            CHECK_LENGTH(4);
+            c = (((src[spos]&0x3ff) << 10) | (src[spos+1]&0x3ff)) + 0x10000;
+            ADD_BYTE(0xf0 | (c>>18));
+            ADD_BYTE(0x80 | ((c>>12) & 0x3f));
+            ADD_BYTE(0x80 | ((c>>6) & 0x3f));
+            ADD_BYTE(0x80 | (c & 0x3f));
+        }
+        else if ((src[spos] & 0xdc00) == 0xdc00) {
+            /* second surrogate without preceding first surrogate */
+            error++;
+        }
+        else {
+            CHECK_LENGTH(3);
+            ADD_BYTE(0xe0 | src[spos]>>12);
+            ADD_BYTE(0x80 | ((src[spos]>>6) & 0x3f));
+            ADD_BYTE(0x80 | (src[spos] & 0x3f));
+        }
+    }
+
+    if (errp)
+ *errp = error;
+  return dpos;
+
+#undef ADD_BYTE
+#undef CHECK_LENGTH
+}
+
 
 /*
  * Convert ip related info in umsg from utf8 to utf16 and store in hmsg
@@ -294,31 +461,31 @@ ipinfo_utf8_utf16(hv_kvp_bsd_msg *umsg, hv_kvp_bsd_msg *hmsg)
         int err_ip, err_subnet, err_gway, err_dns, err_adap;
 
 	size_t len=0;
-        len = utf8_to_utf16((uint16_t *)hmsg->body.kvp_ip_val.ip_addr,
+        len = convert8_to_16((uint16_t *)hmsg->body.kvp_ip_val.ip_addr,
                         MAX_IP_ADDR_SIZE,
                         (char *)umsg->body.kvp_ip_val.ip_addr,
                         strlen((char *)umsg->body.kvp_ip_val.ip_addr),
-                        UNUSED_FLAG, &err_ip);
-        len = utf8_to_utf16((uint16_t *)hmsg->body.kvp_ip_val.sub_net,
+                         &err_ip);
+        len = convert8_to_16((uint16_t *)hmsg->body.kvp_ip_val.sub_net,
                         MAX_IP_ADDR_SIZE,
                         (char *)umsg->body.kvp_ip_val.sub_net,
                         strlen((char *)umsg->body.kvp_ip_val.sub_net),
-                        UNUSED_FLAG, &err_subnet);
-        len = utf8_to_utf16((uint16_t *)hmsg->body.kvp_ip_val.gate_way,
+                         &err_subnet);
+        len = convert8_to_16((uint16_t *)hmsg->body.kvp_ip_val.gate_way,
                         MAX_GATEWAY_SIZE,
                         (char *)umsg->body.kvp_ip_val.gate_way,
                         strlen((char *)umsg->body.kvp_ip_val.gate_way),
-                        UNUSED_FLAG, &err_gway);
-        len = utf8_to_utf16((uint16_t *)hmsg->body.kvp_ip_val.dns_addr,
+                         &err_gway);
+        len = convert8_to_16((uint16_t *)hmsg->body.kvp_ip_val.dns_addr,
                         MAX_IP_ADDR_SIZE,
                         (char *)umsg->body.kvp_ip_val.dns_addr,
                         strlen((char *)umsg->body.kvp_ip_val.dns_addr),
-                        UNUSED_FLAG, &err_dns);
-        len = utf8_to_utf16((uint16_t *)hmsg->body.kvp_ip_val.adapter_id,
+                         &err_dns);
+        len = convert8_to_16((uint16_t *)hmsg->body.kvp_ip_val.adapter_id,
                         MAX_IP_ADDR_SIZE,
                         (char *)umsg->body.kvp_ip_val.adapter_id,
                         strlen((char *)umsg->body.kvp_ip_val.adapter_id),
-                        UNUSED_FLAG, &err_adap);
+                         &err_adap);
         hmsg->body.kvp_ip_val.dhcp_enabled = umsg->body.kvp_ip_val.dhcp_enabled;
         hmsg->body.kvp_ip_val.addr_family = umsg->body.kvp_ip_val.addr_family;
 
@@ -370,16 +537,17 @@ ipinfo_utf16_utf8(hv_kvp_bsd_msg *hmsg, hv_kvp_bsd_msg *umsg)
 	sprintf(if_name,"%s%d","hn",unit);
 	
 	/* IP Address */
-    	len = utf16_to_utf8((char *)umsg->body.kvp_ip_val.ip_addr, 
-			MAX_IP_ADDR_SIZE,
+    	len = convert16_to_8((char *)umsg->body.kvp_ip_val.ip_addr, 
+						MAX_IP_ADDR_SIZE,
                         (uint16_t *)hmsg->body.kvp_ip_val.ip_addr,
-                        MAX_IP_ADDR_SIZE, UNUSED_FLAG, &err_ip);
+                        MAX_IP_ADDR_SIZE,  &err_ip);
+						printf(" Size IP: %d \n", MAX_IP_ADDR_SIZE);
 	/* Adapter ID : GUID */
-	len = utf16_to_utf8((char *)umsg->body.kvp_ip_val.adapter_id,
+	len = convert16_to_8((char *)umsg->body.kvp_ip_val.adapter_id,
                         MAX_ADAPTER_ID_SIZE,
                         (uint16_t *)hmsg->body.kvp_ip_val.adapter_id,
-                        MAX_ADAPTER_ID_SIZE, UNUSED_FLAG, &err_adap);
-	/* Need to implemnet multiple network adapter handler */
+                        MAX_ADAPTER_ID_SIZE,  &err_adap);
+	/* Need to implement multiple network adapter handler */
 	if (strncmp(buf,(char *)umsg->body.kvp_ip_val.adapter_id,36) == 0)
 	{
 		/* Pass inteface Name */
@@ -388,21 +556,22 @@ ipinfo_utf16_utf8(hv_kvp_bsd_msg *hmsg, hv_kvp_bsd_msg *umsg)
 	else
 	{
 		printf("GUID Not Found\n");
+		/* Implement safe exit */
 	}
 	/* Address Family , DHCP , SUBNET, Gateway, DNS */ 
 	umsg->kvp_hdr.operation = hmsg->kvp_hdr.operation;
 	umsg->body.kvp_ip_val.addr_family = hmsg->body.kvp_ip_val.addr_family;
         umsg->body.kvp_ip_val.dhcp_enabled = hmsg->body.kvp_ip_val.dhcp_enabled;
-        utf16_to_utf8((char *)umsg->body.kvp_ip_val.sub_net, MAX_IP_ADDR_SIZE,
+        convert16_to_8((char *)umsg->body.kvp_ip_val.sub_net, MAX_IP_ADDR_SIZE,
                         (uint16_t *)hmsg->body.kvp_ip_val.sub_net,
-                        MAX_IP_ADDR_SIZE, UNUSED_FLAG, &err_subnet);
-        utf16_to_utf8((char *)umsg->body.kvp_ip_val.gate_way, MAX_GATEWAY_SIZE,
+                        MAX_IP_ADDR_SIZE,  &err_subnet);
+        convert16_to_8((char *)umsg->body.kvp_ip_val.gate_way, MAX_GATEWAY_SIZE,
                         (uint16_t *)hmsg->body.kvp_ip_val.gate_way,
-                        MAX_GATEWAY_SIZE, UNUSED_FLAG, &err_gway);
+                        MAX_GATEWAY_SIZE,  &err_gway);
 
-        utf16_to_utf8((char *)umsg->body.kvp_ip_val.dns_addr, MAX_IP_ADDR_SIZE,
+        convert16_to_8((char *)umsg->body.kvp_ip_val.dns_addr, MAX_IP_ADDR_SIZE,
                         (uint16_t *)hmsg->body.kvp_ip_val.dns_addr,
-                        MAX_IP_ADDR_SIZE, UNUSED_FLAG, &err_dns);
+                        MAX_IP_ADDR_SIZE,  &err_dns);
 
         return (err_ip | err_subnet | err_gway | err_dns | err_adap);
 }
@@ -427,40 +596,40 @@ host_user_kvp_msg(void)
 	umsg->kvp_hdr.pool = hmsg->kvp_hdr.pool;
 	
 	switch (umsg->kvp_hdr.operation) {
-	case KVP_OP_SET_IP_INFO:
+	case HV_KVP_OP_SET_IP_INFO:
 		ipinfo_utf16_utf8(hmsg, umsg);
 		break;
-	case KVP_OP_GET_IP_INFO:
-        	utf16_to_utf8((char *)umsg->body.kvp_ip_val.adapter_id,
+	case HV_KVP_OP_GET_IP_INFO:
+        	convert16_to_8((char *)umsg->body.kvp_ip_val.adapter_id,
                         MAX_ADAPTER_ID_SIZE,
                         (uint16_t *)hmsg->body.kvp_ip_val.adapter_id,
-                        MAX_ADAPTER_ID_SIZE, UNUSED_FLAG, &utf_err);
+                        MAX_ADAPTER_ID_SIZE,  &utf_err);
 
         	umsg->body.kvp_ip_val.addr_family = 
 			hmsg->body.kvp_ip_val.addr_family;
 		break;
-	case KVP_OP_SET:
+	case HV_KVP_OP_SET:
 		value_type = hmsg->body.kvp_set.data.value_type;
 		switch (value_type) {
-		case REG_SZ:
+		case HV_REG_SZ:
 		umsg->body.kvp_set.data.value_size =
-			utf16_to_utf8(
+			convert16_to_8(
 			(char *)umsg->body.kvp_set.data.msg_value.value,
 			HV_KVP_EXCHANGE_MAX_VALUE_SIZE - 1,
 			(uint16_t *)hmsg->body.kvp_set.data.msg_value.value,
-				hmsg->body.kvp_set.data.value_size,
-				UNUSED_FLAG, &utf_err);
+			hmsg->body.kvp_set.data.value_size,
+			&utf_err);
 		/* utf8 encoding */
 		umsg->body.kvp_set.data.value_size = 
 			umsg->body.kvp_set.data.value_size/2;
 				break;
-		case REG_U32:
+		case HV_REG_U32:
 			umsg->body.kvp_set.data.value_size =
 			sprintf(umsg->body.kvp_set.data.msg_value.value, "%d", 
 				hmsg->body.kvp_set.data.msg_value.value_u32) + 1;
 			break;
 
-		case REG_U64:
+		case HV_REG_U64:
 			umsg->body.kvp_set.data.value_size =
 			sprintf(umsg->body.kvp_set.data.msg_value.value, "%llu", 
 				(unsigned long long)
@@ -469,40 +638,40 @@ host_user_kvp_msg(void)
 
 		}
 		umsg->body.kvp_set.data.key_size =
-			utf16_to_utf8(umsg->body.kvp_set.data.key,
+			convert16_to_8(umsg->body.kvp_set.data.key,
 			HV_KVP_EXCHANGE_MAX_KEY_SIZE - 1,
 			(uint16_t *)hmsg->body.kvp_set.data.key,
 			hmsg->body.kvp_set.data.key_size,
-			UNUSED_FLAG, &utf_err);
+			 &utf_err);
 		/* utf8 encoding */
 		umsg->body.kvp_set.data.key_size = 
 			umsg->body.kvp_set.data.key_size/2;
 		break;
-	case KVP_OP_GET:
+	case HV_KVP_OP_GET:
 		umsg->body.kvp_get.data.key_size =
-			utf16_to_utf8(umsg->body.kvp_get.data.key,
+			convert16_to_8(umsg->body.kvp_get.data.key,
 			HV_KVP_EXCHANGE_MAX_KEY_SIZE - 1,
 			(uint16_t *)hmsg->body.kvp_get.data.key,
 			hmsg->body.kvp_get.data.key_size,
-			UNUSED_FLAG, &utf_err);
+			 &utf_err);
 		/* utf8 encoding */
 		umsg->body.kvp_get.data.key_size = 
 			umsg->body.kvp_get.data.key_size/2;
 			break;
 
-	case KVP_OP_DELETE:
+	case HV_KVP_OP_DELETE:
 		umsg->body.kvp_delete.key_size =
-			utf16_to_utf8(umsg->body.kvp_delete.key,
+			convert16_to_8(umsg->body.kvp_delete.key,
 			HV_KVP_EXCHANGE_MAX_KEY_SIZE - 1,
 			(uint16_t *)hmsg->body.kvp_delete.key,
 			hmsg->body.kvp_delete.key_size,
-			UNUSED_FLAG, &utf_err);
+			 &utf_err);
 		/* utf8 encoding */
 		umsg->body.kvp_delete.key_size = 
 			umsg->body.kvp_delete.key_size/2; 
 			break;
 
-	case KVP_OP_ENUMERATE:
+	case HV_KVP_OP_ENUMERATE:
 		umsg->body.kvp_enum_data.index =
 			hmsg->body.kvp_enum_data.index;
 			break;
@@ -530,47 +699,47 @@ user_host_kvp_msg(void)
 	hv_kvp_bsd_msg *hmsg = kvp_msg_state.host_kvp_msg;
 
 	switch (kvp_msg_state.host_kvp_msg->kvp_hdr.operation) {
-	case KVP_OP_GET_IP_INFO:
+	case HV_KVP_OP_GET_IP_INFO:
 		return(ipinfo_utf8_utf16(umsg, hmsg));
 
-	case KVP_OP_SET_IP_INFO:
-	case KVP_OP_SET:
-	case KVP_OP_DELETE:
+	case HV_KVP_OP_SET_IP_INFO:
+	case HV_KVP_OP_SET:
+	case HV_KVP_OP_DELETE:
 		return (KVP_SUCCESS);
 
-	case KVP_OP_ENUMERATE:
+	case HV_KVP_OP_ENUMERATE:
 		host_exchg_data = &hmsg->body.kvp_enum_data.data; 
 		key_name = umsg->body.kvp_enum_data.data.key;
-		hkey_len = utf8_to_utf16((uint16_t *) host_exchg_data->key,
+		hkey_len = convert8_to_16((uint16_t *) host_exchg_data->key,
 				((HV_KVP_EXCHANGE_MAX_KEY_SIZE / 2) - 2),
 				key_name, strlen(key_name), 
-				UNUSED_FLAG, &utf_err);
+				 &utf_err);
 		/* utf16 encoding */
 		host_exchg_data->key_size = 2*(hkey_len + 1); 
 		value = umsg->body.kvp_enum_data.data.msg_value.value;	
 		hvalue_len = 
-		utf8_to_utf16( (uint16_t *)host_exchg_data->msg_value.value,
+		convert8_to_16( (uint16_t *)host_exchg_data->msg_value.value,
 				( (HV_KVP_EXCHANGE_MAX_VALUE_SIZE / 2) - 2),
 				value, strlen(value),
-				UNUSED_FLAG, &utf_err);
+				 &utf_err);
 		host_exchg_data->value_size = 2 * (hvalue_len + 1);
-		host_exchg_data->value_type = REG_SZ;
+		host_exchg_data->value_type = HV_REG_SZ;
 
 		if ((hkey_len < 0) || (hvalue_len < 0)) return(HV_E_FAIL);
 		return (KVP_SUCCESS);
 
-	case KVP_OP_GET:
+	case HV_KVP_OP_GET:
 		host_exchg_data = &hmsg->body.kvp_get.data;
 		value = umsg->body.kvp_get.data.msg_value.value;
-		hvalue_len = utf8_to_utf16(
+		hvalue_len = convert8_to_16(
 				(uint16_t *) host_exchg_data->msg_value.value,
 				((HV_KVP_EXCHANGE_MAX_VALUE_SIZE / 2) - 2),
 				value, strlen(value), 
-				UNUSED_FLAG, &utf_err);
+				 &utf_err);
 		/* Convert value size to uft16 */
 		host_exchg_data->value_size = 2*(hvalue_len + 1); 
 		/* Use values by string */
-		host_exchg_data->value_type = REG_SZ; 
+		host_exchg_data->value_type = HV_REG_SZ; 
 		
 		if ((hkey_len < 0) || (hvalue_len < 0)) return(HV_E_FAIL);
 		return (KVP_SUCCESS);
@@ -657,10 +826,10 @@ hv_kvp_conn_register(void *p)
 		}
 	}
 
-	/* First message from the user should be a KVP_OP_REGISTER msg */
+	/* First message from the user should be a HV_KVP_OP_REGISTER msg */
 	if (register_done == FALSE) {
 		error = kvp_rcv_user(); /* receive a message from user */
-		if (hv_user_kvp_msg.kvp_hdr.operation == KVP_OP_REGISTER) {
+		if (hv_user_kvp_msg.kvp_hdr.operation == HV_KVP_OP_REGISTER) {
 			/* Cancel timer and establish connection to the host */
 			if (kvp_msg_state.kvp_rcv_timer.callout) {
                         	untimeout(kvp_user_rcv_timer, NULL, 
@@ -876,7 +1045,7 @@ hv_kvp_attach(device_t dev)
 
 	if (ret) printf("hv_kvp_attach: hv_vmbus_channel_open failed\n");
 #endif
-	kvp_msg_state.kvp_rcv_timer = timeout(kvp_user_rcv_timer, NULL, 10);
+	kvp_msg_state.kvp_rcv_timer = timeout(kvp_user_rcv_timer, NULL, 1500);
 	if (kvp_msg_state.kvp_rcv_timer.callout == NULL) {
 		printf("hv_kvp_attach: timer creation failed\n");
 		ret = -1; 
