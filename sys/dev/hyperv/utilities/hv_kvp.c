@@ -214,7 +214,7 @@ kvp_connect_user(void)
 	unix_sock.domain = AF_UNIX;
 	unix_sock.type = SOCK_STREAM;
 	unix_sock.protocol = 0;
-	sock_error = socket(thread_ptr, &unix_sock);
+	sock_error = sys_socket(thread_ptr, &unix_sock);
 	if (sock_error) {
                 return sock_error;
 	}
