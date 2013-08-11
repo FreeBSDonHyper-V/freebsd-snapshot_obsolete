@@ -217,7 +217,7 @@ hv_vmbus_init(void)
 	 * Write our OS info
 	 */
 	uint64_t os_guest_info = HV_FREEBSD_GUEST_ID;
-	wmsr(HV_X64_MSR_GUEST_OS_ID, os_guest_info);
+	wrmsr(HV_X64_MSR_GUEST_OS_ID, os_guest_info);
 	hv_vmbus_g_context.guest_id = os_guest_info;
 
 	/*
