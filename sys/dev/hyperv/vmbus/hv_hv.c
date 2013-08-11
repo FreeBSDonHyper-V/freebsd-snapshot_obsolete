@@ -76,7 +76,7 @@ static struct timecounter hv_timecounter = {
 static u_int
 hv_get_timecount(struct timecounter *tc)
 {
-	u_int now =  hv_vmbus_read_rdmsr(HV_X64_MSR_TIME_REF_COUNT);
+	u_int now = rdmsr(HV_X64_MSR_TIME_REF_COUNT);
 	return (now);
 }
 

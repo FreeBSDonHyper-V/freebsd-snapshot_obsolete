@@ -117,7 +117,7 @@ vmbus_msg_swintr(void *dummy)
 			 * This will cause message queue rescan to possibly
 			 * deliver another msg from the hypervisor
 			 */
-			hv_vmbus_write_msr(HV_X64_MSR_EOM, 0);
+			wrmsr(HV_X64_MSR_EOM, 0);
 	    }
 	}
 }
