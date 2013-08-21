@@ -428,7 +428,7 @@ vmbus_bus_init(void)
 			KASSERT(setup_args.pageBuffers[i] != NULL,
 					("Error VMBUS: malloc failed!"));
 			if (i > 0)
-				free(setup_args.pageBuffers[0], M_DEVBUF)
+				free(setup_args.pageBuffers[0], M_DEVBUF);
 			goto cleanup4;
 		}
 	}
