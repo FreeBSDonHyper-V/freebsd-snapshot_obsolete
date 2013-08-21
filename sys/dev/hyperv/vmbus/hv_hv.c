@@ -386,9 +386,8 @@ hv_vmbus_synic_init(void *arg)
 	hv_vmbus_synic_scontrol sctrl;
 	hv_vmbus_synic_sint	shared_sint;
 	uint64_t		version;
-	hv_setup_args* 		setup_args = (hv_setup_args)arg;
+	hv_setup_args* 		setup_args = (hv_setup_args *)arg;
 
-	irq_vector = *((uint32_t *) (irq_arg));
 	cpu = PCPU_GET(cpuid);
 
 	if (hv_vmbus_g_context.hypercall_page == NULL)
@@ -409,6 +408,7 @@ hv_vmbus_synic_init(void *arg)
 	 */
 	version = rdmsr(HV_X64_MSR_SVERSION);
 
+	
 	hv_vmbus_g_context.syn_ic_msg_page[cpu] = setup_args->pageBuffers[0];
 	hv_vmbus_g_context.syn_ic_event_page[cpu] = setup_args->pageBuffers[1];
 
@@ -434,7 +434,7 @@ hv_vmbus_synic_init(void *arg)
 	wrmsr(HV_X64_MSR_SIEFP, siefp.as_uint64_t);
 
 	/*HV_SHARED_SINT_IDT_VECTOR + 0x20; */
-	shared_sint.vector = setup_args.vector;
+	shared_sint.vector = setup_args->vector;
 	shared_sint.masked = FALSE;
 	shared_sint.auto_eoi = FALSE;
 
