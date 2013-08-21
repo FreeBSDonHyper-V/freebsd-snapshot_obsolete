@@ -380,7 +380,6 @@ hv_vmbus_synic_init(void *arg)
 
 {
 	int			cpu;
-	uint32_t		irq_vector;
 	hv_vmbus_synic_simp	simp;
 	hv_vmbus_synic_siefp	siefp;
 	hv_vmbus_synic_scontrol sctrl;
