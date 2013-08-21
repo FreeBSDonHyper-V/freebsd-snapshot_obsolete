@@ -68,6 +68,7 @@ static int vmbus_rid;
 struct resource *intr_res;
 static int vmbus_irq = VMBUS_IRQ;
 static int vmbus_inited;
+static hv_setup_args setup_args; /* only CPU 0 supported at this time */
 
 /**
  * @brief Software interrupt thread routine to handle channel messages from
@@ -344,6 +345,7 @@ vmbus_bus_init(void)
 	unsigned int vector = 0;
 	struct intsrc *isrc;
 	struct ioapic_intsrc *intpin;
+	int i;
 
 	if (vmbus_inited)
 		return (0);
@@ -418,15 +420,28 @@ vmbus_bus_init(void)
 	/**
 	 * Notify the hypervisor of our irq.
 	 */
+	setup_args.vector = vector;
+	for(int i=0; i < 2; i++) {
+		setup_args.pageBuffers[i] =
+				malloc(PAGE_SIZE, M_DEVBUF, M_NOWAIT | M_ZERO);
+		if (setup_args.pageBuffers[i] == NULL) {
+			KASSERT(setup_args.pageBuffers[i] != NULL,
+					("Error VMBUS: malloc failed!"));
+			if (i > 0)
+				free(setup_args.pageBuffers[0])
+			goto cleanup4;
+		}
+	}
 
-	smp_rendezvous(NULL, hv_vmbus_synic_init, NULL, &vector);
+	/* only CPU #0 supported at this time */
+	smp_rendezvous(NULL, hv_vmbus_synic_init, NULL, &setup_args);
 
-	/**
+	/*
 	 * Connect to VMBus in the root partition
 	 */
 	ret = hv_vmbus_connect();
 
-	if (ret)
+	if (ret != 0)
 	    goto cleanup4;
 
 	hv_vmbus_request_channel_offers();
@@ -440,7 +455,6 @@ vmbus_bus_init(void)
 	bus_teardown_intr(vmbus_devp, intr_res, vmbus_cookiep);
 
 	cleanup3:
-
 	bus_release_resource(vmbus_devp, SYS_RES_IRQ, vmbus_rid, intr_res);
 
 	cleanup2:
@@ -494,6 +508,11 @@ vmbus_bus_exit(void)
 	hv_vmbus_disconnect();
 
 	smp_rendezvous(NULL, hv_vmbus_synic_cleanup, NULL, NULL);
+
+	for(int i=0; i < 2; i++) {
+		if(setup_args.pageBuffers[i] != 0)
+			free(setup_args.pageBuffers[i]);
+	}
 
 	hv_vmbus_cleanup();
 

@@ -1,7 +1,7 @@
 /*-
- * Copyright (c) 2009-2012 Microsoft Corp.
- * Copyright (c) 2012 NetApp Inc.
- * Copyright (c) 2012 Citrix Inc.
+ * Copyright (c) 2009-2013 Microsoft Corp.
+ * Copyright (c) 2013 NetApp Inc.
+ * Copyright (c) 2013 Citrix Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,7 +46,7 @@
 #define HV_KVP			3
 #define HV_MAX_UTIL_SERVICES	4
 
-#define HV_NANO_SEC	1000000000L	/* 10^ 9 nanosecs = 1 sec */
+#define HV_NANO_SEC		1000000000L	/* 10^ 9 nanosecs = 1 sec */
 
 #define HV_WLTIMEDELTA			116444736000000000L /* in 100ns unit */
 #define HV_ICTIMESYNCFLAG_PROBE		0
@@ -176,22 +176,19 @@ static void
 hv_set_host_time(void *context)
 {
 	uint64_t	hosttime = (uint64_t)context;
-	struct timespec	ts, host_ts;
-	int64_t		tns, host_tns, tmp, tsec;
+	struct timespec	guest_ts;
+	uint64_t	host_tns;
 
-	nanotime(&ts);
-	tns = ts.tv_sec * HV_NANO_SEC + ts.tv_nsec;
 	host_tns = (hosttime - HV_WLTIMEDELTA) * 100;
 
-	tmp = host_tns;
-	tsec = tmp / HV_NANO_SEC;
-	host_ts.tv_nsec = (long) (tmp - (tsec * HV_NANO_SEC));
-	host_ts.tv_sec = tsec;
+	guest_ts.tv_sec = (time_t)(host_tns / HV_NANO_SEC);
+	guest_ts.tv_nsec = (long)(host_tns % HV_NANO_SEC);
 
 	/* force time sync with host after reboot, restore, etc. */
+
 	mtx_lock(&Giant);
 	tc_setclock(&host_ts);
-	resettodr();
+	/* resettodr(); */
 	mtx_unlock(&Giant);
 }
 

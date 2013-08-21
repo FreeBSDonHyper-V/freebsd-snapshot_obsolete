@@ -376,7 +376,7 @@ hv_vmbus_signal_event()
  * @brief hv_vmbus_synic_init
  */
 void
-hv_vmbus_synic_init(void *irq_arg) 
+hv_vmbus_synic_init(void *arg)
 
 {
 	int			cpu;
@@ -386,6 +386,7 @@ hv_vmbus_synic_init(void *irq_arg)
 	hv_vmbus_synic_scontrol sctrl;
 	hv_vmbus_synic_sint	shared_sint;
 	uint64_t		version;
+	hv_setup_args* 		setup_args = (hv_setup_args)arg;
 
 	irq_vector = *((uint32_t *) (irq_arg));
 	cpu = PCPU_GET(cpuid);
@@ -408,19 +409,8 @@ hv_vmbus_synic_init(void *irq_arg)
 	 */
 	version = rdmsr(HV_X64_MSR_SVERSION);
 
-	hv_vmbus_g_context.syn_ic_msg_page[cpu] =
-	    malloc(PAGE_SIZE, M_DEVBUF, M_NOWAIT | M_ZERO);
-	KASSERT(hv_vmbus_g_context.syn_ic_msg_page[cpu] != NULL,
-	    ("Error VMBUS: malloc failed for allocating page!"));
-	if (hv_vmbus_g_context.syn_ic_msg_page[cpu] == NULL)
-	    return;
-
-	hv_vmbus_g_context.syn_ic_event_page[cpu] =
-	    malloc(PAGE_SIZE, M_DEVBUF, M_NOWAIT | M_ZERO);
-	KASSERT(hv_vmbus_g_context.syn_ic_event_page[cpu] != NULL,
-	    ("Error VMBUS: malloc failed to allocate page!"));
-	if (hv_vmbus_g_context.syn_ic_event_page[cpu] == NULL)
-	    goto cleanup;
+	hv_vmbus_g_context.syn_ic_msg_page[cpu] = setup_args->pageBuffers[0];
+	hv_vmbus_g_context.syn_ic_event_page[cpu] = setup_args->pageBuffers[1];
 
 	/*
 	 * Setup the Synic's message page
@@ -443,12 +433,12 @@ hv_vmbus_synic_init(void *irq_arg)
 
 	wrmsr(HV_X64_MSR_SIEFP, siefp.as_uint64_t);
 
-	shared_sint.vector = irq_vector; /*HV_SHARED_SINT_IDT_VECTOR + 0x20; */
+	/*HV_SHARED_SINT_IDT_VECTOR + 0x20; */
+	shared_sint.vector = setup_args.vector;
 	shared_sint.masked = FALSE;
 	shared_sint.auto_eoi = FALSE;
 
-	wrmsr(
-	    HV_X64_MSR_SINT0 + HV_VMBUS_MESSAGE_SINT,
+	wrmsr(HV_X64_MSR_SINT0 + HV_VMBUS_MESSAGE_SINT,
 	    shared_sint.as_uint64_t);
 
 	/* Enable the global synic bit */
@@ -460,10 +450,6 @@ hv_vmbus_synic_init(void *irq_arg)
 	hv_vmbus_g_context.syn_ic_initialized = TRUE;
 
 	return;
-
-	cleanup:
-	free(hv_vmbus_g_context.syn_ic_msg_page[cpu], M_DEVBUF);
-
 }
 
 /**
@@ -505,10 +491,5 @@ void hv_vmbus_synic_cleanup(void *arg)
 	siefp.base_siefp_gpa = 0;
 
 	wrmsr(HV_X64_MSR_SIEFP, siefp.as_uint64_t);
-
-	contigfree(hv_vmbus_g_context.syn_ic_msg_page[cpu],
-			PAGE_SIZE, M_DEVBUF);
-	contigfree(hv_vmbus_g_context.syn_ic_event_page[cpu],
-			PAGE_SIZE, M_DEVBUF);
 }
 

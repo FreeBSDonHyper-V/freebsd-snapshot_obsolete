@@ -714,5 +714,9 @@ static inline  uint64_t hv_generate_guest_id(
 	return guest_id;
 }
 
+typedef struct {
+	unsigned int	vector;
+	void		*pageBuffers[2];
+} hv_setup_args;
 
 #endif  /* __HYPERV_PRIV_H__ */
