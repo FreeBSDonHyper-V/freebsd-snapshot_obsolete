@@ -511,7 +511,7 @@ vmbus_bus_exit(void)
 
 	for(int i=0; i < 2; i++) {
 		if(setup_args.pageBuffers[i] != 0)
-			free(setup_args.pageBuffers[i]);
+			free(setup_args.pageBuffers[i], M_DEVBUF);
 	}
 
 	hv_vmbus_cleanup();
