@@ -191,7 +191,9 @@ hv_set_host_time(void *context)
       
 	/* if (host is running faster by 5 seconds) */
 	/*   then make the guest catch up */
+	
 	if (diff > 5 || diff < -5) {
+		error = kern_clock_settime(curthread,CLOCK_REALTIME, &host_ts);
 		if(bootverbose) {
 			printf ("Hyper-V: Guest time (%0lx, %0lx) - "
 				"Hosttime %0lx (%0lx,%0lx), sizeof(%ld)\n",
@@ -202,7 +204,6 @@ hv_set_host_time(void *context)
 			printf ("Hyperv: Difference %ld > 5, error %d\n",
 				diff, error);
 		}
-		error = kern_clock_settime(curthread,CLOCK_REALTIME, &host_ts);
 	}
 }
 
