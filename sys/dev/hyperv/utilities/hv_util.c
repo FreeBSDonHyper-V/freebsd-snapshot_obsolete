@@ -46,7 +46,7 @@
 #define HV_KVP			3
 #define HV_MAX_UTIL_SERVICES	4
 
-#define HV_NANO_SEC		1000000000	/* 10^ 9 nanosecs = 1 sec */
+#define HV_NANO_SEC		1000000000L	/* 10^ 9 nanosecs = 1 sec */
 
 #define HV_WLTIMEDELTA			116444736000000000L /* in 100ns unit */
 #define HV_ICTIMESYNCFLAG_PROBE		0
@@ -177,33 +177,26 @@ hv_set_host_time(void *context)
 {
 	uint64_t		*hosttime = (uint64_t *)context;
 	struct timespec	guest_ts, host_ts;
-	uint64_t		host_tns;
-	int64_t			diff;
+	int64_t			host_tns;
+	int64_t			guest_tns;
+	int64_t			diff_secs;
 	int			error;
  
-	host_tns = (*hosttime - HV_WLTIMEDELTA) * 100;
-	host_ts.tv_sec = (time_t)(host_tns/HV_NANO_SEC);
-	host_ts.tv_nsec = (long)(host_tns%HV_NANO_SEC);
  
+	host_tns = ((int64_t)(*hosttime - HV_WLTIMEDELTA)) * 100;
 	nanotime(&guest_ts);
-      
-	diff = (int64_t)host_ts.tv_sec - (int64_t)guest_ts.tv_sec;
-      
+	guest_tns = guest_ts.tv_sec * HV_NANO_SEC + guest_ts.tv_nsec;
+	diff_secs = (host_tns - guest_tns) / HV_NANO_SEC;
+     
 	/* if (host is running faster by 5 seconds) */
 	/*   then make the guest catch up */
 	
-	if (diff > 5 || diff < -5) {
-		error = kern_clock_settime(curthread,CLOCK_REALTIME, &host_ts);
-		{ 
-			printf ("Hyper-V: Guest time (%0lx, %0lx) - "
-				"Hosttime %0lx (%0lx,%0lx), sizeof(%ld)\n",
-				guest_ts.tv_sec, guest_ts.tv_nsec, *hosttime,
-				host_ts.tv_sec, host_ts.tv_nsec,
-				sizeof(struct timespec));
-
-			printf ("Hyperv: Difference %ld > 5, error %d\n",
-				diff, error);
-		}
+	if (diff_secs > 5 || diff_secs < -5) {	
+		host_ts.tv_sec = (time_t)(host_tns / HV_NANO_SEC);
+		host_ts.tv_nsec = 
+		    (long)(host_tns - (host_ts.tv_sec * HV_NANO_SEC));
+		error =
+		    kern_clock_settime(curthread, CLOCK_REALTIME, &host_ts);
 	}
 	
 	free(context, M_DEVBUF);
