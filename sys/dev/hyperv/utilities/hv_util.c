@@ -194,7 +194,7 @@ hv_set_host_time(void *context)
 	
 	if (diff > 5 || diff < -5) {
 		error = kern_clock_settime(curthread,CLOCK_REALTIME, &host_ts);
-		if(bootverbose) {
+		{ 
 			printf ("Hyper-V: Guest time (%0lx, %0lx) - "
 				"Hosttime %0lx (%0lx,%0lx), sizeof(%ld)\n",
 				guest_ts.tv_sec, guest_ts.tv_nsec, *hosttime,
@@ -205,6 +205,8 @@ hv_set_host_time(void *context)
 				diff, error);
 		}
 	}
+	
+	free(context, M_DEVBUF);
 }
 
 /**
@@ -222,24 +224,27 @@ static inline
 void hv_adj_guesttime(uint64_t hosttime, uint8_t flags)
 {
 	static int scnt = 50;
-	/* note: timesync comes in very slowyly (5+ secs), so no need for
-		malloc allocation to pass this to a background task
-	 */
-		
-	static volatile uint64_t  hosttime_save;
-	
+	uint64_t *hosttime_save;
+
 	if ((flags & HV_ICTIMESYNCFLAG_SYNC) != 0) {
-		hosttime_save = hosttime;
-		hv_queue_work_item(service_table[HV_TIME_SYNCH].work_queue,
-			hv_set_host_time, (void *) &hosttime_save);
+		hosttime_save = malloc(sizeof(uint64_t), M_DEVBUF, M_NOWAIT);
+		if (hosttime_save != 0) {
+			*hosttime_save = hosttime;
+			hv_queue_work_item(
+				service_table[HV_TIME_SYNCH].work_queue,
+			hv_set_host_time, (void *)hosttime_save);
+		}
 		return;
 	}
 
 	if ((flags & HV_ICTIMESYNCFLAG_SAMPLE) != 0 && scnt > 0) {
-		hosttime_save = hosttime;
-		scnt--;
-		hv_queue_work_item(service_table[HV_TIME_SYNCH].work_queue,
-			hv_set_host_time, (void *) &hosttime_save);
+		hosttime_save = malloc(sizeof(uint64_t), M_DEVBUF, M_NOWAIT);
+		if (hosttime_save != 0) {
+			scnt--;
+			hv_queue_work_item(
+				service_table[HV_TIME_SYNCH].work_queue,
+				hv_set_host_time, (void *)hosttime_save);
+		}
 	}
 }
 
