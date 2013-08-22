@@ -37,7 +37,7 @@
 #include <sys/module.h>
 #include <sys/reboot.h>
 #include <sys/timetc.h>
-
+#include <sys/syscallsubr.h>
 #include <dev/hyperv/include/hyperv.h>
 
 #define HV_SHUT_DOWN		0
@@ -195,7 +195,7 @@ hv_set_host_time(void *context)
 		if(bootverbose) {
 			printf ("Hyper-V: Guest time (%0lx, %0lx) - "
 				"Hosttime %0lx (%0lx,%0lx), sizeof(%ld)\n",
-				guest_ts.tv_sec, guest_ts.tv_nsec, hosttime,
+				guest_ts.tv_sec, guest_ts.tv_nsec, *hosttime,
 				host_ts.tv_sec, host_ts.tv_nsec,
 				sizeof(struct timespec));
 
