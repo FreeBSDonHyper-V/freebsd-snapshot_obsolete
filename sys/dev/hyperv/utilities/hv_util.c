@@ -198,11 +198,11 @@ hv_set_host_time(void *context)
 				guest_ts.tv_sec, guest_ts.tv_nsec, hosttime,
 				host_ts.tv_sec, host_ts.tv_nsec,
 				sizeof(struct timespec));
-			error = kern_clock_settime(curthread,
-						CLOCK_REALTIME, &host_ts);
+
 			printf ("Hyperv: Difference %ld > 5, error %d\n",
 				diff, error);
 		}
+		error = kern_clock_settime(curthread,CLOCK_REALTIME, &host_ts);
 	}
 }
 

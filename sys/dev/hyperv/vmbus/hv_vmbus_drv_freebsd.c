@@ -345,7 +345,6 @@ vmbus_bus_init(void)
 	unsigned int vector = 0;
 	struct intsrc *isrc;
 	struct ioapic_intsrc *intpin;
-	int i;
 
 	if (vmbus_inited)
 		return (0);
