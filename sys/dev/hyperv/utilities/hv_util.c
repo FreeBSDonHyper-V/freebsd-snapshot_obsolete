@@ -46,7 +46,7 @@
 #define HV_KVP			3
 #define HV_MAX_UTIL_SERVICES	4
 
-#define HV_NANO_SEC		1000000000L	/* 10^ 9 nanosecs = 1 sec */
+#define HV_NANO_SEC		1000000000	/* 10^ 9 nanosecs = 1 sec */
 
 #define HV_WLTIMEDELTA			116444736000000000L /* in 100ns unit */
 #define HV_ICTIMESYNCFLAG_PROBE		0
@@ -175,21 +175,35 @@ static void hv_kvp_cb(void *context)
 static void
 hv_set_host_time(void *context)
 {
-	uint64_t	hosttime = (uint64_t)context;
-	struct timespec	guest_ts;
-	uint64_t	host_tns;
-
-	host_tns = (hosttime - HV_WLTIMEDELTA) * 100;
-
-	guest_ts.tv_sec = (time_t)(host_tns / HV_NANO_SEC);
-	guest_ts.tv_nsec = (long)(host_tns % HV_NANO_SEC);
-
-	/* force time sync with host after reboot, restore, etc. */
-
-	mtx_lock(&Giant);
-	tc_setclock(&host_ts);
-	/* resettodr(); */
-	mtx_unlock(&Giant);
+	uint64_t		*hosttime = (uint64_t *)context;
+	struct timespec	guest_ts, host_ts;
+	uint64_t		host_tns;
+	int64_t			diff;
+	int			error;
+ 
+	host_tns = (*hosttime - HV_WLTIMEDELTA) * 100;
+	host_ts.tv_sec = (time_t)(host_tns/HV_NANO_SEC);
+	host_ts.tv_nsec = (long)(host_tns%HV_NANO_SEC);
+ 
+	nanotime(&guest_ts);
+      
+	diff = (int64_t)host_ts.tv_sec - (int64_t)guest_ts.tv_sec;
+      
+	/* if (host is running faster by 5 seconds) */
+	/*   then make the guest catch up */
+	if (diff > 5 || diff < -5) {
+		if(bootverbose) {
+			printf ("Hyper-V: Guest time (%0lx, %0lx) - "
+				"Hosttime %0lx (%0lx,%0lx), sizeof(%ld)\n",
+				guest_ts.tv_sec, guest_ts.tv_nsec, hosttime,
+				host_ts.tv_sec, host_ts.tv_nsec,
+				sizeof(struct timespec));
+			error = kern_clock_settime(curthread,
+						CLOCK_REALTIME, &host_ts);
+			printf ("Hyperv: Difference %ld > 5, error %d\n",
+				diff, error);
+		}
+	}
 }
 
 /**
@@ -207,17 +221,24 @@ static inline
 void hv_adj_guesttime(uint64_t hosttime, uint8_t flags)
 {
 	static int scnt = 50;
-
+	/* note: timesync comes in very slowyly (5+ secs), so no need for
+		malloc allocation to pass this to a background task
+	 */
+		
+	static volatile uint64_t  hosttime_save;
+	
 	if ((flags & HV_ICTIMESYNCFLAG_SYNC) != 0) {
-	    hv_queue_work_item(service_table[HV_TIME_SYNCH].work_queue,
-		hv_set_host_time, (void *) hosttime);
-	    return;
+		hosttime_save = hosttime;
+		hv_queue_work_item(service_table[HV_TIME_SYNCH].work_queue,
+			hv_set_host_time, (void *) &hosttime_save);
+		return;
 	}
 
 	if ((flags & HV_ICTIMESYNCFLAG_SAMPLE) != 0 && scnt > 0) {
-	    scnt--;
-	    hv_queue_work_item(service_table[HV_TIME_SYNCH].work_queue,
-		hv_set_host_time, (void *) hosttime);
+		hosttime_save = hosttime;
+		scnt--;
+		hv_queue_work_item(service_table[HV_TIME_SYNCH].work_queue,
+			hv_set_host_time, (void *) &hosttime_save);
 	}
 }
 
@@ -302,7 +323,7 @@ hv_shutdown_cb(void *context)
 			icmsghdrp->status = HV_S_OK;
 			execute_shutdown = 1;
 			if(bootverbose)
-			    printf("Shutdown request received -"
+			    printf("Hyper-V: Shutdown request received -"
 				    " graceful shutdown initiated\n");
 			break;
 		    default:
@@ -380,7 +401,8 @@ hv_util_probe(device_t dev)
 
 	for (i = 0; i < HV_MAX_UTIL_SERVICES; i++) {
 	    const char *p = vmbus_get_type(dev);
-	    if (service_table[i].enabled && !memcmp(p, &service_table[i].guid, sizeof(hv_guid))) {
+	    if (service_table[i].enabled &&
+		!memcmp(p, &service_table[i].guid, sizeof(hv_guid))) {
 		device_set_softc(dev, (void *) (&service_table[i]));
 		rtn_value = 0;
 	    }
@@ -481,7 +503,8 @@ static driver_t util_driver = { "hyperv-utils", util_methods, 0 };
 
 static devclass_t util_devclass;
 
-DRIVER_MODULE(hv_utils, vmbus, util_driver, util_devclass, hv_util_modevent, 0);
+DRIVER_MODULE(hv_utils, vmbus, util_driver, util_devclass,
+		hv_util_modevent, 0);
 MODULE_VERSION(hv_utils, 1);
 MODULE_DEPEND(hv_utils, vmbus, 1, 1, 1);
 
